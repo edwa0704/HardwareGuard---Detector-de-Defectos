@@ -41,6 +41,17 @@ pip (gestor de paquetes de Python)
 Conexión a internet (para descargar dataset de Kaggle)
 Cuenta gratuita en kaggle.com
 
+💻 Terminales compatibles
+| Terminal | Sistema | Comandos del proyecto |
+| CMD | Windows | python src/script.py |
+| PowerShell | Windows | python src/script.py |
+| Git Bash | Windows | python src/script.py |
+| cmder | Windows | python src/script.py |
+| Terminal | Linux / Mac | python3 src/script.py |
+
+>✅ En Windows todos los terminales aceptan '/' en las rutas. No necesitas usar '\'.
+>⚠️ En Linux y Mac usa 'python3' en lugar de 'python'.
+
 🚀 Instalación Paso a Paso
 
 1. Clonar el repositorio
@@ -63,7 +74,7 @@ venv\Scripts\activate
 python3 -m venv venv
 source venv/bin/activate
 ```
-✅ Sabrás que está activo porque verás (venv) al inicio de tu terminal.
+>✅ Sabrás que está activo porque verás '(venv)' al inicio de tu terminal.
 
 3. Instalar dependencias
 ```bash
@@ -73,7 +84,7 @@ pip install -r requirements.txt
 4. Configurar Kaggle API
 Paso 1: Regístrate en kaggle.com
 Paso 2: Ve a tu perfil → Settings → API → Create Legacy API Key
-Paso 3: Coloca el archivo kaggle.json en:
+Paso 3: Coloca el archivo 'kaggle.json' en:
 ```bash
 # Windows — crea la carpeta y copia el archivo:
 # C:\Users\TU_USUARIO\.kaggle\kaggle.json
@@ -90,7 +101,7 @@ kaggle datasets download -d datafiniti/consumer-reviews-of-amazon-products -p da
 ```
 ▶️ Ejecución del Proyecto
 
-⚠️ Ejecuta los scripts en orden. Cada uno depende del anterior.
+> ⚠️ Ejecuta los scripts en orden. Cada uno depende del anterior.
 ```bash
 # Windows
 python src\generate_dataset.py
@@ -123,7 +134,7 @@ Salida esperada:
 #3 Acer     Varianza: 2.0176  [ALTO]
 ```
 PR #2 — Pipeline NLTK
-Descarga recursos NLTK primero (solo una vez):
+>Descarga recursos NLTK primero (solo una vez):
 ```bash
 # Windows / Linux / Mac
 python -c "import nltk; nltk.download('stopwords'); nltk.download('punkt'); nltk.download('punkt_tab')"
@@ -204,20 +215,38 @@ Top 10 marcas con mayor tasa de defectos
 Matriz de confusión visual
 
 📊 Resultados del Modelo
-Métrica                                               Valor
-Dataset                                              45,033 reseñas reales de Amazon
-División                                             80% entrenamiento / 20% prueba
-Accuracy                                             96.00%
-F1-Score (defectos)                                 0.5055
-Verdaderos Positivos                                184 defectos detectados
-Falsos Negativos                                    170 defectos no detectados
+| Métrica | Valor |
+|---|---|
+| Dataset | 45,033 reseñas reales de Amazon |
+| División | 80% entrenamiento / 20% prueba |
+| Accuracy | **96.00%** |
+| F1-Score (defectos) | 0.5055 |
+| Verdaderos Positivos | 184 defectos detectados |
+| Falsos Negativos | 170 defectos no detectados |
 
-Nota: El F1-Score bajo (0.50) es esperado por el desbalance natural del dataset (3.9% defectos vs 96.1% positivos). Esto refleja un escenario real de mercado.
+>Nota: El F1-Score bajo (0.50) es esperado por el desbalance natural del dataset (3.9% defectos vs 96.1% positivos). Esto refleja un escenario real de mercado.
 
 📅 Historial de Pull Requests
-PR          Descripción                                                                      Estado
-PR #1       Análisis de varianza por marca — Top 5 marcas con mayor riesgo                     ✅
-PR #2       Pipeline NLTK — tokenización, stopwords y stemming                                 ✅
-PR #3       Vectorización TF-IDF — matrices numéricas para el modelo                           ✅
-PR #4       Red neuronal PyTorch — entrenamiento y matriz de confusión                         ✅
-PR #5       Reporte visual HTML — gráficos para el departamento de compras                     ✅
+| PR | Descripción | Estado |
+|---|---|---|
+| PR #1 | Análisis de varianza por marca — Top 5 marcas con mayor riesgo | ✅ |
+| PR #2 | Pipeline NLTK — tokenización, stopwords y stemming | ✅ |
+| PR #3 | Vectorización TF-IDF — matrices numéricas para el modelo | ✅ |
+| PR #4 | Red neuronal PyTorch — entrenamiento y matriz de confusión | ✅ |
+| PR #5 | Reporte visual HTML — gráficos para el departamento de compras | ✅ |
+
+🧰 Tecnologías Utilizadas
+| Librería | Uso |
+|---|---|
+| pandas / numpy | Manipulación de datos y estadísticas |
+| nltk | Pipeline de limpieza de texto (stopwords, stemming) |
+| scikit-learn | Vectorización TF-IDF y métricas |
+| torch (PyTorch) | Red neuronal |
+| matplotlib / seaborn | Gráficos y visualizaciones |
+| scipy | Matrices dispersas (sparse) |
+| kaggle | Descarga del dataset real de Amazon |
+
+👨‍💻 Autor
+Frank — Proyecto Semana 3
+
+HardwareGuard: Detector de Defectos vía Análisis de Sentimiento Público
