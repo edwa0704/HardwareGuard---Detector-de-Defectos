@@ -1,114 +1,223 @@
-HardwareGuard — Detector de Defectos de Fábrica
+🛡️ HardwareGuard — Detector de Defectos de Fábrica
 
-Motor NLP para detectar lotes de hardware defectuosos mediante análisis de reseñas públicas.
-
+Motor NLP que analiza miles de reseñas reales de Amazon para detectar automáticamente lotes de hardware defectuosos mediante análisis de sentimiento.
 
 📋 Descripción del Proyecto
-HardwareGuard es un sistema de Procesamiento de Lenguaje Natural (NLP) que analiza miles de reseñas de hardware para detectar automáticamente patrones que indican defectos de fábrica en lotes de productos.
+HardwareGuard es un sistema de Procesamiento de Lenguaje Natural (NLP) que analiza reseñas públicas de productos de hardware para detectar patrones que indican defectos de fábrica.
 Impacto empresarial: Previene que el departamento de compras adquiera lotes defectuosos de impresoras, laptops y otros equipos, reduciendo costos de garantía y devoluciones.
+Dataset real: 45,033 reseñas de Amazon Consumer Reviews (Kaggle)
+Modelo: Red Neuronal PyTorch — Accuracy: 96%
 
 🗂️ Estructura del Proyecto
-
-```bash 
+```bash
 HardwareGuard/
 ├── data/
-│   ├── hardware_reviews_raw.csv      # Dataset crudo generado (5,000 reseñas)
-│   └── hardware_reviews_clean.csv    # Dataset limpio y preprocesado
+│   ├── 1429_1.csv                                 # Dataset Kaggle (parte 1)
+│   ├── Datafiniti_Amazon_Consumer_Reviews_*.csv   # Dataset Kaggle (parte 2 y 3)
+│   ├── reviews_clean.csv                          # Dataset limpio y procesado
+│   ├── matriz_tfidf.npz                           # Matriz TF-IDF
+│   ├── labels.csv                                 # Etiquetas del modelo
+│   ├── vocabulario.json                           # Vocabulario del modelo
+│   └── hardwareguard_model.pth                    # Modelo entrenado (PyTorch)
 ├── src/
-│   ├── generate_dataset.py           # PASO 1A: Generación del dataset
-│   └── preprocess.py                 # PASO 1B: Limpieza y preprocesamiento
-├── notebooks/                        # Análisis exploratorio (próximos pasos)
-├── docs/                             # Documentación adicional
-├── requirements.txt                  # Dependencias del proyecto
-└── README.md                         # Este archivo
+│   ├── generate_dataset.py     # Paso 1A: Genera dataset sintético
+│   ├── preprocess.py           # Paso 1B: Limpieza del dataset
+│   ├── analisis_varianza.py    # Paso 2 PR#1: Varianza por marca
+│   ├── nlp_pipeline.py         # Paso 2 PR#2: Pipeline NLTK
+│   ├── vectorizacion.py        # Paso 2 PR#3: Vectorización TF-IDF
+│   ├── procesar_kaggle.py      # Paso 3: Procesa dataset real Kaggle
+│   ├── entrenar_modelo.py      # Paso 4 PR#4: Entrena red neuronal
+│   └── reporte_visual.py       # Paso 5 PR#5: Reporte HTML visual
+├── reports/
+│   └── reporte_hardwareguard.html
+├── requirements.txt
+├── .gitignore
+└── README.md
 ```
 ⚙️ Requisitos del Sistema
 
 Python 3.8 o superior
 pip (gestor de paquetes de Python)
+Conexión a internet (para descargar dataset de Kaggle)
+Cuenta gratuita en kaggle.com
 
 🚀 Instalación Paso a Paso
+
 1. Clonar el repositorio
 ```bash
-git clone https://github.com/edwa0704/HardwareGuard.git
-cd HardwareGuard
-```
-2. Crear entorno virtual (recomendado)
-```bash
-python -m venv venv
+# Windows (CMD / PowerShell / cmder)
+git clone https://github.com/edwa0704/HardwareGuard---Detector-de-Defectos.git
+cd HardwareGuard---Detector-de-Defectos
 
-# En Windows:
+# Linux / Mac
+git clone https://github.com/edwa0704/HardwareGuard---Detector-de-Defectos.git
+cd HardwareGuard---Detector-de-Defectos
+```
+2. Crear entorno virtual
+```bash
+# Windows (CMD / PowerShell / cmder)
+python -m venv venv
 venv\Scripts\activate
 
-# En Linux/Mac:
+# Linux / Mac
+python3 -m venv venv
 source venv/bin/activate
 ```
+✅ Sabrás que está activo porque verás (venv) al inicio de tu terminal.
+
 3. Instalar dependencias
 ```bash
+# Windows / Linux / Mac
 pip install -r requirements.txt
 ```
-▶️ Ejecución — Paso 1
-Paso 1A: Generar el Dataset
+4. Configurar Kaggle API
+Paso 1: Regístrate en kaggle.com
+Paso 2: Ve a tu perfil → Settings → API → Create Legacy API Key
+Paso 3: Coloca el archivo kaggle.json en:
 ```bash
-python src/generate_dataset.py
+# Windows — crea la carpeta y copia el archivo:
+# C:\Users\TU_USUARIO\.kaggle\kaggle.json
+
+# Linux / Mac
+mkdir -p ~/.kaggle
+cp ~/Downloads/kaggle.json ~/.kaggle/
+chmod 600 ~/.kaggle/kaggle.json
 ```
-Qué hace:
-
-Genera 5,000 reseñas sintéticas de hardware (laptops, impresoras, tarjetas de video, etc.)
-Cada reseña tiene: texto, calificación (1-5), sentimiento y etiqueta de defecto
-Guarda el resultado en data/hardware_reviews_raw.csv
-
-Salida esperada:
-[HardwareGuard] Generando 5000 reseñas de hardware...
-[HardwareGuard] Dataset generado: 5000 reseñas
-Distribución de sentimientos:
-  positive    2932
-  negative    1272
-  neutral      796
-[HardwareGuard] ✅ Dataset guardado en: data/hardware_reviews_raw.csv
-
-Paso 1B: Limpiar y Preprocesar
+Paso 4: Descarga el dataset
 ```bash
+# Windows / Linux / Mac
+kaggle datasets download -d datafiniti/consumer-reviews-of-amazon-products -p data/ --unzip
+```
+▶️ Ejecución del Proyecto
+
+⚠️ Ejecuta los scripts en orden. Cada uno depende del anterior.
+```bash
+# Windows
+python src\generate_dataset.py
+python src\preprocess.py
+
+# Linux / Mac
+python src/generate_dataset.py
 python src/preprocess.py
 ```
-Qué hace:
-
-Carga el dataset crudo
-Elimina duplicados y valores nulos
-Normaliza el texto (minúsculas, sin caracteres especiales)
-Filtra reseñas con menos de 5 palabras
-Agrega columna label (1=negativo, 0=no negativo)
-Guarda el resultado en data/hardware_reviews_clean.csv
-
 Salida esperada:
-[HardwareGuard] RESUMEN DE PREPROCESAMIENTO
-  Filas originales  : 5000
-  Filas finales     : 5000
-  Reseñas negativas : 1272 (25.4%)
-  Defectos fábrica  : 848 (17.0%)
-[HardwareGuard] ✅ Dataset limpio guardado en: data/hardware_reviews_clean.csv
+```bash
+[HardwareGuard] Dataset generado: 5000 reseñas
+[HardwareGuard] ✅ Dataset guardado en: 
+data/hardware_reviews_raw.csv
+```
+Paso 2 — Análisis Descriptivo y NLP
 
-📊 Descripción del Dataset
-Columna   Tipo            Descripción
-review_id     string        ID único de la reseña (REV_00001, REV_00002...)
-product       string        Nombre del producto (HP Pavilion 15, etc.)
-category      string        Categoría del hardware (Laptop, Impresora, etc.)
-rating        int           Calificación del 1 al 5
-review_text   string        Texto original de la reseña
-review_clean  string        Texto limpio y normalizado
-word_count    int           Número de palabras en la reseña
-sentiment     string        Sentimiento: positive / negative / neutral
-label         int           1 = reseña negativa (rating ≤ 2), 0 = no negativa
-is_defective  int           1 = indica defecto de fábrica, 0 = no
+PR #1 — Varianza por marca
+```bash
+# Windows
+python src\analisis_varianza.py
 
-📅 Plan de Entregas
-Día      Paso     Descripción                                        Estado
-1        1        Generación y preprocesamiento del dataset✅        Completado
-2        2        Análisis exploratorio (EDA) y visualizaciones🔄    Pendiente
-3        3        Entrenamiento del modelo NLP (TF-IDF + ML)🔄       Pendiente
-4        4        Evaluación y métricas del modelo🔄                 Pendiente
-5        5        Sistema de alertas de lotes defectuosos🔄          Pendiente
+# Linux / Mac
+python src/analisis_varianza.py
+```
+Salida esperada:
+```bash
+#1 Samsung  Varianza: 2.1388  [ALTO]
+#2 HyperX   Varianza: 2.0857  [ALTO]
+#3 Acer     Varianza: 2.0176  [ALTO]
+```
+PR #2 — Pipeline NLTK
+Descarga recursos NLTK primero (solo una vez):
+```bash
+# Windows / Linux / Mac
+python -c "import nltk; nltk.download('stopwords'); nltk.download('punkt'); nltk.download('punkt_tab')"
+```
 
-👨‍💻 Autor
-Frank — Proyecto Semana 4
-HardwareGuard: Detector de Defectos vía Análisis de Sentimiento Público
+```bash
+# Windows
+python src\nlp_pipeline.py
+
+# Linux / Mac
+python src/nlp_pipeline.py
+```
+Salida esperada:
+```bash
+Original : El producto llegó DEFECTUOSO de fábrica
+NLTK     : product lleg defectu fabric enciend
+```
+PR #3 — Vectorización TF-IDF
+```bash
+# Windows
+python src\vectorizacion.py
+
+# Linux / Mac
+python src/vectorizacion.py
+```
+Salida esperada:
+```bash
+TF-IDF listo: 5,000 reseñas x 231 palabras
+```
+
+Paso 3 — Procesar Dataset Real de Kaggle
+```bash
+# Windows
+python src\procesar_kaggle.py
+
+# Linux / Mac
+python src/procesar_kaggle.py
+```
+Salida esperada:
+```bash
+[HardwareGuard] Total combinado: 67,992 reseñas
+[HardwareGuard] Filas finales  : 45,033
+[HardwareGuard] Matriz: 45,033 reseñas x 8,000 features
+```
+Paso 4 — Entrenar el Modelo (PR #4)
+```bash
+# Windows
+python src\entrenar_modelo.py
+
+# Linux / Mac
+python src/entrenar_modelo.py
+```
+Arquitectura de la red:
+```bash
+Entrada (8000) → Dense(128) → ReLU → Dropout(0.3)
+              → Dense(64)  → ReLU → Dropout(0.3)
+              → Dense(1)   → Sigmoid
+              → Salida: 0 = Sin Defecto | 1 = DEFECTO
+```
+Salida esperada:
+```bash
+Epoch 1    Pérdida: 0.1591    Accuracy Test: 96.85%
+Accuracy global : 96.00%  [EXCELENTE]
+```
+Paso 5 — Reporte Visual (PR #5)
+```bash
+# Windows
+python src\reporte_visual.py
+
+# Linux / Mac
+python src/reporte_visual.py
+```
+Se abre automáticamente en el navegador con:
+
+Palabras más frecuentes en reseñas de 1 estrella
+Distribución de calificaciones
+Top 10 marcas con mayor tasa de defectos
+Matriz de confusión visual
+
+📊 Resultados del Modelo
+Métrica                                               Valor
+Dataset                                              45,033 reseñas reales de Amazon
+División                                             80% entrenamiento / 20% prueba
+Accuracy                                             96.00%
+F1-Score (defectos)                                 0.5055
+Verdaderos Positivos                                184 defectos detectados
+Falsos Negativos                                    170 defectos no detectados
+
+Nota: El F1-Score bajo (0.50) es esperado por el desbalance natural del dataset (3.9% defectos vs 96.1% positivos). Esto refleja un escenario real de mercado.
+
+📅 Historial de Pull Requests
+PR          Descripción                                                                      Estado
+PR #1       Análisis de varianza por marca — Top 5 marcas con mayor riesgo                     ✅
+PR #2       Pipeline NLTK — tokenización, stopwords y stemming                                 ✅
+PR #3       Vectorización TF-IDF — matrices numéricas para el modelo                           ✅
+PR #4       Red neuronal PyTorch — entrenamiento y matriz de confusión                         ✅
+PR #5       Reporte visual HTML — gráficos para el departamento de compras                     ✅
