@@ -1,0 +1,26 @@
+[
+    {
+        "hora": "12:18:29",
+        "texto": "Sí claro, excelente calidad... se rompió en dos días",
+        "resultado": "🇵🇪 DEFECTO 🚨",
+        "probabilidad": 100.0
+    },
+    {
+        "hora": "12:18:15",
+        "texto": "No es perfecto pero cumple bien su función",
+        "resultado": "🇵🇪 POSITIVO ✅",
+        "probabilidad": 0.0
+    },
+    {
+        "hora": "12:17:56",
+        "texto": "Una joya de tablet, rápida, sin fallas y la batería dura todo el día",
+        "resultado": "🇵🇪 POSITIVO ✅",
+        "probabilidad": 0.0
+    },
+    {
+        "hora": "12:17:42",
+        "texto": "Al inicio parecía bueno, pero después de unos días dejó de funcionar",
+        "resultado": "🇵🇪 DEFECTO 🚨",
+        "probabilidad": 100.0
+    }
+]

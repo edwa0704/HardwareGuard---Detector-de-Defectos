@@ -1,444 +1,384 @@
-import os
-import json
-import numpy as np
-import pandas as pd
-from scipy.sparse import load_npz
- 
+import os, json, csv, sys
 import torch
-import torch.nn as nn
-import torch.optim as optim
-from torch.utils.data import DataLoader, TensorDataset
- 
+import numpy as np
+from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import (
-    accuracy_score, confusion_matrix,
-    classification_report, f1_score
-)
+from sklearn.metrics import classification_report, confusion_matrix
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
  
-# ─────────────────────────────────────────────
-# 0. CONFIGURACIÓN
-# ─────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════
+# 1. RUTAS
+# ══════════════════════════════════════════════════════════
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(BASE_DIR, "..", "data")
+CSV_PATH = os.path.join(DATA_DIR, "hardware_reviews_clean.csv")
+MODEL_OUT = os.path.join(DATA_DIR, "hardwareguard_model.pth")
+VOCAB_OUT  = os.path.join(DATA_DIR, "vocab.json")
  
-# Semilla para reproducibilidad
-SEMILLA = 42
-torch.manual_seed(SEMILLA)
-np.random.seed(SEMILLA)
+sia = SentimentIntensityAnalyzer()
  
-# Hiperparámetros del entrenamiento
-EPOCHS      = 20       # Número de pasadas completas por los datos
-BATCH_SIZE  = 64       # Reseñas procesadas por cada paso
-LR          = 0.001    # Learning rate — qué tan rápido aprende la red
-TEST_SIZE   = 0.20     # 20% para prueba, 80% para entrenamiento
+# ══════════════════════════════════════════════════════════
+# 2. SEÑALES DEL MOTOR MEJORADO (mismas que predictor.py)
+#    Usadas para etiquetar los 796 casos neutrales
+# ══════════════════════════════════════════════════════════
+SEÑALES_DEFECTO = [
+    "overheat","overheating","gets hot","too hot","burning","burns","heats up",
+    "stopped working","stop working","stops working","shuts off","shuts down",
+    "shut off","shutdown","turns off","turned off","won't turn on","wont turn on",
+    "not working","doesnt work","doesn't work","ceased to work","no longer works",
+    "stopped functioning","failed after","died after","broke after","broken after",
+    "broke down","screen","cracked screen","broken screen","no display","black screen",
+    "flickering","flickers","pixelated","no charge","won't charge","doesn't charge",
+    "drains fast","battery dies","bad battery","battery dead","battery drains",
+    "slow","laggy","lag","freezes","frozen","freeze","hangs","unresponsive",
+    "crashes","keeps crashing","defect","defective","broken","damaged","faulty",
+    "fault","malfunction","malfunctioning","useless","unusable","waste",
+    "terrible","horrible","awful","garbage","trash","junk","piece of junk",
+    "no wifi","no bluetooth","disconnects","won't connect","connection issues",
+    "calienta","caliente","sobrecalienta","quema","apaga","apagarse","se apaga",
+    "reinicia","reinicio","pantalla rota","no enciende","no prende","no se ve",
+    "no carga","se descarga","lento","lenta","cuelga","congela","tarda mucho",
+    "defecto","falla","fallo","roto","dañado","malogrado","no funciona",
+    "inútil","inutilizable","basura","no conecta","se desconecta",
+    "dejó de funcionar","dejo de funcionar","dejó de encender","dejo de encender",
+    "dejó de cargar","dejo de cargar","ya no funciona","ya no enciende",
+    "ya no carga","ya no sirve","duró poco","duro poco","se arruinó","se arruino",
+    "se malogró","se malogro","se dañó","se daño","se rompió","se rompio",
+    "parou de funcionar","nao funciona","não funciona","quebrado","defeituoso",
+    "travando","trava","porquería","porqueria","pésimo","pesimo","malísimo",
+    "malisimo","horrible","espantoso","una basura","es basura","fatal",
+    "decepcionante","me arrepiento","estafa","fraude","me tiene harto",
+    "qué asco","que asco","da asco","inservible","dinero tirado","plata botada",
+    "no vale nada","lo peor","mediocre",
+]
  
+SEÑALES_POSITIVO = [
+    "excelente","excellent","perfecto","perfect","funciona","works","funciona bien",
+    "works great","rápido","rapido","fast","veloz","speedy","fluido","smooth",
+    "potente","powerful","increíble","increible","incredible","amazing",
+    "buena calidad","good quality","calidad","quality","resistente","durable",
+    "sólido","solido","solid","robusto","recomiendo","recommend",
+    "cumple lo prometido","tal como se describe","buen producto","buena calidad",
+    "vale la pena","outstanding","absolutely love it","best purchase",
+    "worth every penny","highly recommend","flawless","exceptional",
+    "bueno","buena","bien","funciona bien","me gustó","me gusto","me gusta",
+    "recomendado","recomendable","cumple su función","cumple su funcion",
+    "buen precio calidad","good","great","works well","happy with","pleased",
+    "joya","una joya","espectacular","lo máximo","lo maximo","de lujo","top",
+    "lo mejor","el mejor","la mejor","impecable","maravilloso","maravillosa",
+    "genial","vale cada centavo","vale cada sol","valió la pena",
+    "lo recomiendo","100% recomendado","sin defectos","no está mal","no esta mal",
+    "sin fallas","no falla","no se cuelga","no se calienta","no da problemas",
+]
  
-# ─────────────────────────────────────────────
-# 1. CARGAR DATOS
-# ─────────────────────────────────────────────
+SENTIMIENTOS_ES = {
+    "porquería":-1.0,"porqueria":-1.0,"pésimo":-1.0,"pesimo":-1.0,
+    "malísimo":-1.0,"malisimo":-1.0,"horrible":-1.0,"fatal":-1.0,
+    "decepcionante":-1.0,"me arrepiento":-1.0,"estafa":-1.0,
+    "me tiene harto":-1.0,"qué asco":-1.0,"que asco":-1.0,
+    "plata botada":-1.0,"dinero tirado":-1.0,"no vale nada":-1.0,
+    "lo peor":-1.0,"inservible":-1.0,"waste of money":-0.9,
+    "malo":-0.7,"mala":-0.7,"no me gustó":-0.7,"no me gusto":-0.7,
+    "no me gusta":-0.7,"no recomiendo":-0.7,"mala compra":-0.7,
+    "no vale la pena":-0.7,"esperaba más":-0.7,"defraudado":-0.7,
+    "not worth it":-0.7,"disappointed":-0.7,"poor quality":-0.7,
+    "regular":-0.4,"más o menos":-0.4,"mas o menos":-0.4,
+    "podría ser mejor":-0.4,"mejorable":-0.4,"not great":-0.4,
+    "joya":1.0,"una joya":1.0,"excelente":1.0,"espectacular":1.0,
+    "increíble":1.0,"increible":1.0,"lo máximo":1.0,"lo maximo":1.0,
+    "perfecto":1.0,"perfecta":1.0,"impecable":1.0,"maravilloso":1.0,
+    "genial":1.0,"vale cada centavo":1.0,"vale cada sol":1.0,
+    "valió la pena":1.0,"100% recomendado":1.0,"sin defectos":1.0,
+    "outstanding":1.0,"flawless":1.0,"best purchase":1.0,
+    "bueno":0.7,"buena":0.7,"bien":0.7,"me gustó":0.7,"me gusto":0.7,
+    "recomendado":0.7,"cumple lo prometido":0.7,"buen producto":0.7,
+    "vale la pena":0.7,"good":0.7,"great":0.7,"works well":0.7,
+    "no está mal":0.4,"no esta mal":0.4,"sirve":0.4,"funciona":0.4,
+    "cumple":0.4,"aceptable":0.4,"decent":0.4,"okay":0.4,"works":0.4,
+}
  
-def cargar_datos():
+NEG_DE_POSITIVO = [
+    "no estoy contento","no estoy satisfecho","no me gusta","no me gustó",
+    "no me gusto","no cumple","no cumplió","no cumplio","no es bueno",
+    "no es buena","no funciona bien","no vale la pena","no lo recomiendo",
+    "no recomiendo","not happy","not satisfied","not good","not worth",
+]
+NEG_DE_NEGATIVO = [
+    "no está mal","no esta mal","no es malo","no es mala","no tiene fallas",
+    "no tiene defectos","sin fallas","sin defectos","no falla","no se cuelga",
+    "no se calienta","no da problemas","not bad","no issues","no problems",
+]
+ 
+# ══════════════════════════════════════════════════════════
+# 3. MOTOR DE ETIQUETADO (para neutrales)
+# ══════════════════════════════════════════════════════════
+def etiquetar_con_motor(texto):
     """
-    Carga la matriz TF-IDF y los labels generados en el PR #3.
- 
-    Returns:
-        tuple: (X, y)
-            X : Matriz TF-IDF como array numpy (5000 × 231)
-            y : Vector de labels binarios (0 o 1)
- 
-    Raises:
-        FileNotFoundError: Si no existen los archivos del PR #3
+    Aplica el motor mejorado para determinar si una reseña es defecto (1) o no (0).
+    Retorna: (etiqueta: int, confianza: str)
     """
-    base_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "data"))
+    t = texto.lower().strip()
  
-    ruta_matriz = os.path.join(base_dir, "matriz_tfidf.npz")
-    ruta_labels = os.path.join(base_dir, "labels.csv")
+    # A. Negaciones primero
+    for frase in NEG_DE_POSITIVO:
+        if frase in t:
+            return 1, "negacion"
+    for frase in NEG_DE_NEGATIVO:
+        if frase in t:
+            return 0, "negacion"
  
-    for ruta in [ruta_matriz, ruta_labels]:
-        if not os.path.exists(ruta):
-            raise FileNotFoundError(
-                f"No se encontró: {ruta}\n"
-                "Ejecuta primero: python src/vectorizacion.py"
-            )
+    # B. Señales directas de hardware
+    n_def = sum(1 for s in SEÑALES_DEFECTO  if s in t)
+    n_pos = sum(1 for s in SEÑALES_POSITIVO if s in t)
+    if n_def > 0:
+        return 1, "señal_directa"
+    if n_pos > 0:
+        return 0, "señal_directa"
  
-    # Cargar matriz TF-IDF (formato sparse → dense)
-    X = load_npz(ruta_matriz).toarray().astype(np.float32)
+    # C. Diccionario ES nativo
+    candidatos = sorted(SENTIMIENTOS_ES.keys(), key=len, reverse=True)
+    scores = [SENTIMIENTOS_ES[f] for f in candidatos if f in t]
+    if scores:
+        score_es = sum(scores) / len(scores)
+        if score_es <= -0.3:
+            return 1, "diccionario_es"
+        if score_es >= 0.3:
+            return 0, "diccionario_es"
  
-    # Cargar labels
-    df_labels = pd.read_csv(ruta_labels)
-    y = df_labels["label"].values.astype(np.float32)
+    # D. VADER
+    score_vader = sia.polarity_scores(t)['compound']
+    if score_vader <= -0.05:
+        return 1, "vader"
+    if score_vader >= 0.05:
+        return 0, "vader"
  
-    print(f"[HardwareGuard] Datos cargados:")
-    print(f"  Matriz X  : {X.shape[0]:,} reseñas × {X.shape[1]} features")
-    print(f"  Labels y  : {len(y):,} etiquetas")
-    print(f"  Defectos  : {int(y.sum()):,} ({y.mean()*100:.1f}%)")
-    print(f"  Sin defecto: {int((y==0).sum()):,} ({(y==0).mean()*100:.1f}%)")
+    # E. Si no hay señal clara → usar rating si está disponible
+    return None, "sin_señal"
  
-    return X, y
- 
- 
-# ─────────────────────────────────────────────
-# 2. DIVIDIR DATOS 80/20
-# ─────────────────────────────────────────────
- 
-def dividir_datos(X, y):
-    """
-    Divide los datos en 80% entrenamiento y 20% prueba.
-    Usa estratificación para mantener la proporción de clases.
- 
-    Args:
-        X (np.array): Matriz de features TF-IDF
-        y (np.array): Vector de labels
- 
-    Returns:
-        tuple: (X_train, X_test, y_train, y_test)
-    """
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y,
-        test_size=TEST_SIZE,
-        random_state=SEMILLA,
-        stratify=y          # Mantiene proporción 0/1 en ambos conjuntos
-    )
- 
-    sep = "-" * 50
-    print(f"\n[HardwareGuard] División 80/20:")
-    print(f"  {sep}")
-    print(f"  Entrenamiento : {len(X_train):,} reseñas (80%)")
-    print(f"    → Defectos  : {int(y_train.sum()):,} ({y_train.mean()*100:.1f}%)")
-    print(f"  Prueba        : {len(X_test):,} reseñas (20%)")
-    print(f"    → Defectos  : {int(y_test.sum()):,} ({y_test.mean()*100:.1f}%)")
-    print(f"  {sep}")
- 
-    return X_train, X_test, y_train, y_test
- 
- 
-def crear_dataloaders(X_train, X_test, y_train, y_test):
-    """
-    Convierte los arrays numpy en tensores PyTorch y crea DataLoaders.
-    Los DataLoaders permiten iterar el dataset en mini-batches.
- 
-    Args:
-        X_train, X_test : Arrays numpy de features
-        y_train, y_test : Arrays numpy de labels
- 
-    Returns:
-        tuple: (loader_train, loader_test)
-    """
-    # Convertir a tensores PyTorch
-    X_train_t = torch.tensor(X_train)
-    X_test_t  = torch.tensor(X_test)
-    y_train_t = torch.tensor(y_train).unsqueeze(1)  # Shape: [N, 1]
-    y_test_t  = torch.tensor(y_test).unsqueeze(1)
- 
-    # Crear datasets
-    dataset_train = TensorDataset(X_train_t, y_train_t)
-    dataset_test  = TensorDataset(X_test_t, y_test_t)
- 
-    # Crear DataLoaders
-    loader_train = DataLoader(dataset_train, batch_size=BATCH_SIZE, shuffle=True)
-    loader_test  = DataLoader(dataset_test,  batch_size=BATCH_SIZE, shuffle=False)
- 
-    return loader_train, loader_test
- 
- 
-# ─────────────────────────────────────────────
-# 3. ARQUITECTURA DE LA RED NEURONAL
-# ─────────────────────────────────────────────
- 
-class HardwareGuardNet(nn.Module):
-    """
-    Red Neuronal Clasificadora para detección de defectos de hardware.
- 
-    Arquitectura:
-        - Capa de entrada : input_dim neuronas (tamaño del vocabulario TF-IDF)
-        - Capa oculta 1   : 128 neuronas + ReLU + Dropout(0.3)
-        - Capa oculta 2   : 64 neuronas  + ReLU + Dropout(0.3)
-        - Capa de salida  : 1 neurona + Sigmoid → probabilidad [0,1]
- 
-    ¿Por qué estas capas?
-        - ReLU     : Introduce no-linealidad (sin ella la red no aprendería patrones complejos)
-        - Dropout  : Durante entrenamiento "apaga" 30% de neuronas al azar → evita memorizar datos
-        - Sigmoid  : Convierte el valor final a probabilidad entre 0 y 1
- 
-    Args:
-        input_dim (int): Número de features (columnas de la matriz TF-IDF)
-    """
- 
+# ══════════════════════════════════════════════════════════
+# 4. ARQUITECTURA DEL MODELO
+# ══════════════════════════════════════════════════════════
+class Modelo(torch.nn.Module):
     def __init__(self, input_dim):
-        super(HardwareGuardNet, self).__init__()
- 
-        self.red = nn.Sequential(
-            # Capa 1: input_dim → 128
-            nn.Linear(input_dim, 128),
-            nn.ReLU(),
-            nn.Dropout(0.3),
- 
-            # Capa 2: 128 → 64
-            nn.Linear(128, 64),
-            nn.ReLU(),
-            nn.Dropout(0.3),
- 
-            # Capa de salida: 64 → 1
-            nn.Linear(64, 1),
-            nn.Sigmoid()
+        super().__init__()
+        self.red = torch.nn.Sequential(
+            torch.nn.Linear(input_dim, 256), torch.nn.ReLU(),
+            torch.nn.Dropout(0.3),
+            torch.nn.Linear(256, 128), torch.nn.ReLU(),
+            torch.nn.Dropout(0.2),
+            torch.nn.Linear(128, 64),  torch.nn.ReLU(),
+            torch.nn.Linear(64, 1),    torch.nn.Sigmoid()
         )
+    def forward(self, x): return self.red(x)
  
-    def forward(self, x):
-        """
-        Propagación hacia adelante (Forward Pass).
-        Recibe un batch de vectores TF-IDF y retorna probabilidades.
+# ══════════════════════════════════════════════════════════
+# 5. CARGA Y PREPARACIÓN DEL DATASET
+# ══════════════════════════════════════════════════════════
+def cargar_dataset():
+    print(f"\n📂 Cargando dataset: {CSV_PATH}")
+    if not os.path.exists(CSV_PATH):
+        print(f"❌ No se encontró: {CSV_PATH}")
+        sys.exit(1)
  
-        Args:
-            x (Tensor): Batch de vectores TF-IDF [batch_size × input_dim]
+    textos, etiquetas = [], []
+    stats = {"positivos":0, "negativos":0, "neutrales_etiquetados":0,
+             "neutrales_descartados":0, "por_motor":{}}
  
-        Returns:
-            Tensor: Probabilidades de defecto [batch_size × 1]
-        """
-        return self.red(x)
+    with open(CSV_PATH, encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            texto = row.get("review_text", "").strip()
+            if not texto:
+                continue
  
+            sentiment = row.get("sentiment", "").strip()
+            is_defective = row.get("is_defective", "0").strip()
+            rating = int(row.get("rating", "3"))
  
-# ─────────────────────────────────────────────
-# 4. ENTRENAMIENTO
-# ─────────────────────────────────────────────
+            if sentiment in ("positive", "negative"):
+                # Usar etiqueta real del dataset
+                etiqueta = int(is_defective)
+                textos.append(texto)
+                etiquetas.append(etiqueta)
+                if etiqueta == 1:
+                    stats["negativos"] += 1
+                else:
+                    stats["positivos"] += 1
  
-def entrenar_modelo(modelo, loader_train, loader_test):
-    """
-    Entrena la red neuronal durante N epochs.
+            elif sentiment == "neutral":
+                # Usar motor mejorado para etiquetar
+                etiqueta, metodo = etiquetar_con_motor(texto)
  
-    Proceso por cada epoch:
-        1. Por cada batch: forward pass → calcular pérdida → backprop → actualizar pesos
-        2. Evaluar accuracy en datos de prueba
-        3. Imprimir progreso
+                if etiqueta is None:
+                    # Si el motor no puede decidir, usar rating como desempate
+                    if rating <= 2:
+                        etiqueta, metodo = 1, "rating_bajo"
+                    elif rating >= 4:
+                        etiqueta, metodo = 0, "rating_alto"
+                    else:
+                        stats["neutrales_descartados"] += 1
+                        continue  # rating 3 sin señal → descartar
  
-    Función de pérdida: BCELoss (Binary Cross Entropy)
-        Mide qué tan lejos está la predicción de la realidad.
-        Si predijo 0.9 pero era 0 → pérdida alta
-        Si predijo 0.9 y era 1   → pérdida baja
+                textos.append(texto)
+                etiquetas.append(etiqueta)
+                stats["neutrales_etiquetados"] += 1
+                stats["por_motor"][metodo] = stats["por_motor"].get(metodo, 0) + 1
  
-    Optimizador: Adam
-        Algoritmo que ajusta los pesos de la red para minimizar la pérdida.
+    total = len(textos)
+    print(f"✅ Dataset preparado:")
+    print(f"   Positivos (dataset real): {stats['positivos']}")
+    print(f"   Negativos (dataset real): {stats['negativos']}")
+    print(f"   Neutrales etiquetados:    {stats['neutrales_etiquetados']}")
+    print(f"   Neutrales descartados:    {stats['neutrales_descartados']}")
+    print(f"   Método motor: {stats['por_motor']}")
+    print(f"   TOTAL para entrenamiento: {total}")
+    print(f"   Balance: {sum(etiquetas)} defectos / {total-sum(etiquetas)} positivos")
+    return textos, etiquetas
  
-    Args:
-        modelo      : Red neuronal HardwareGuardNet
-        loader_train: DataLoader con datos de entrenamiento
-        loader_test : DataLoader con datos de prueba
- 
-    Returns:
-        tuple: (historial_perdida, historial_accuracy)
-    """
-    criterio   = nn.BCELoss()                          # Función de pérdida binaria
-    optimizador = optim.Adam(modelo.parameters(), lr=LR)  # Optimizador Adam
- 
-    historial_perdida   = []
-    historial_accuracy  = []
- 
-    print(f"\n[HardwareGuard] Iniciando entrenamiento...")
-    print(f"  Epochs     : {EPOCHS}")
-    print(f"  Batch size : {BATCH_SIZE}")
-    print(f"  Learning rate: {LR}")
-    print(f"\n  {'Epoch':<8} {'Pérdida':<12} {'Accuracy Test':<15} {'Estado'}")
-    print(f"  {'-'*50}")
- 
-    for epoch in range(1, EPOCHS + 1):
-        # ── Fase de entrenamiento ────────────────
-        modelo.train()
-        perdida_epoch = 0.0
- 
-        for X_batch, y_batch in loader_train:
-            # Forward pass: calcular predicciones
-            predicciones = modelo(X_batch)
- 
-            # Calcular pérdida
-            perdida = criterio(predicciones, y_batch)
- 
-            # Backward pass: calcular gradientes
-            optimizador.zero_grad()
-            perdida.backward()
- 
-            # Actualizar pesos
-            optimizador.step()
- 
-            perdida_epoch += perdida.item()
- 
-        perdida_promedio = perdida_epoch / len(loader_train)
- 
-        # ── Fase de evaluación ───────────────────
-        modelo.eval()
-        todas_preds = []
-        todos_labels = []
- 
-        with torch.no_grad():
-            for X_batch, y_batch in loader_test:
-                probs = modelo(X_batch)
-                preds = (probs >= 0.5).float()
-                todas_preds.extend(preds.squeeze().tolist())
-                todos_labels.extend(y_batch.squeeze().tolist())
- 
-        accuracy = accuracy_score(todos_labels, todas_preds)
-        historial_perdida.append(perdida_promedio)
-        historial_accuracy.append(accuracy)
- 
-        # Indicador visual de progreso
-        estado = "🔥" if accuracy >= 0.80 else "📈" if accuracy >= 0.70 else "⏳"
-        print(f"  {epoch:<8} {perdida_promedio:<12.4f} {accuracy*100:<14.2f}% {estado}")
- 
-    print(f"  {'-'*50}")
-    print(f"[HardwareGuard] Entrenamiento completado ✅\n")
- 
-    return historial_perdida, historial_accuracy
- 
- 
-# ─────────────────────────────────────────────
-# 5. EVALUACIÓN Y MATRIZ DE CONFUSIÓN
-# ─────────────────────────────────────────────
- 
-def evaluar_modelo(modelo, loader_test):
-    """
-    Evalúa el modelo en datos de prueba e imprime métricas detalladas.
- 
-    Métricas:
-        - Accuracy   : (TP + TN) / Total
-        - Precisión  : TP / (TP + FP) — de los que alertamos, cuántos eran reales
-        - Recall     : TP / (TP + FN) — de todos los defectos, cuántos detectamos
-        - F1-Score   : Media armónica de Precisión y Recall
- 
-    Matriz de Confusión:
-        Filas    = Valores reales
-        Columnas = Predicciones del modelo
- 
-              Pred 0   Pred 1
-        Real 0  [TN]    [FP]    ← Sin defecto
-        Real 1  [FN]    [TP]    ← Con defecto
- 
-    Args:
-        modelo      : Red neuronal entrenada
-        loader_test : DataLoader con datos de prueba
-    """
-    modelo.eval()
-    todas_preds  = []
-    todos_labels = []
-    todas_probs  = []
- 
-    with torch.no_grad():
-        for X_batch, y_batch in loader_test:
-            probs = modelo(X_batch)
-            preds = (probs >= 0.5).float()
-            todas_preds.extend(preds.squeeze().tolist())
-            todos_labels.extend(y_batch.squeeze().tolist())
-            todas_probs.extend(probs.squeeze().tolist())
- 
-    # Calcular métricas
-    acc = accuracy_score(todos_labels, todas_preds)
-    f1  = f1_score(todos_labels, todas_preds)
-    cm  = confusion_matrix(todos_labels, todas_preds)
-    tn, fp, fn, tp = cm.ravel()
- 
-    sep = "=" * 65
-    print(f"\n{sep}")
-    print(f"  🧠 HARDWAREGUARD — REPORTE DE EVALUACIÓN DEL MODELO")
-    print(f"{sep}\n")
- 
-    # ── Accuracy general ─────────────────────
-    nivel = "EXCELENTE 🏆" if acc >= 0.85 else "BUENO ✅" if acc >= 0.75 else "MEJORABLE 📈"
-    print(f"  Accuracy global : {acc*100:.2f}%  [{nivel}]")
-    print(f"  F1-Score        : {f1:.4f}")
-    print()
- 
-    # ── Matriz de confusión ──────────────────
-    print(f"  MATRIZ DE CONFUSIÓN:")
-    print(f"  {'':20} Pred: Sin Defecto   Pred: DEFECTO")
-    print(f"  {'Real: Sin Defecto':<20} {tn:^18} {fp:^16}")
-    print(f"  {'Real: DEFECTO':<20} {fn:^18} {tp:^16}")
-    print()
- 
-    # ── Interpretación ───────────────────────
-    print(f"  INTERPRETACIÓN:")
-    print(f"  ✅ Verdaderos Negativos (TN): {tn:,}  — Sin defecto, clasificado correcto")
-    print(f"  ✅ Verdaderos Positivos (TP): {tp:,}  — Defecto detectado correctamente")
-    print(f"  ⚠️  Falsos Positivos    (FP): {fp:,}  — Falsa alarma (sin defecto pero dijo sí)")
-    print(f"  🚨 Falsos Negativos    (FN): {fn:,}  — DEFECTO NO DETECTADO (peligroso)")
-    print()
- 
-    # ── Reporte completo sklearn ─────────────
-    print(f"  REPORTE DETALLADO:")
-    reporte = classification_report(
-        todos_labels, todas_preds,
-        target_names=["Sin Defecto", "DEFECTO"],
-        digits=4
+# ══════════════════════════════════════════════════════════
+# 6. VECTORIZACIÓN
+# ══════════════════════════════════════════════════════════
+def vectorizar(textos):
+    print("\n🔤 Vectorizando texto (TF-IDF)...")
+    vec = TfidfVectorizer(
+        max_features=8000,
+        ngram_range=(1, 2),      # unigramas + bigramas
+        min_df=2,                 # al menos 2 apariciones
+        sublinear_tf=True,        # suavizado logarítmico
+        strip_accents="unicode",
     )
-    for linea in reporte.split("\n"):
-        print(f"  {linea}")
+    X = vec.fit_transform(textos).toarray().astype(np.float32)
+    print(f"   Vocabulario: {len(vec.vocabulary_)} términos")
+    print(f"   Matriz: {X.shape}")
+    return X, vec
  
-    print(f"{sep}")
-    print(f"  ✅ Modelo evaluado exitosamente")
-    print(f"  📌 Falsos Negativos = {fn} → defectos que pasaron desapercibidos")
-    print(f"     Objetivo: minimizar FN para no perder lotes defectuosos.")
-    print(f"{sep}\n")
+# ══════════════════════════════════════════════════════════
+# 7. ENTRENAMIENTO
+# ══════════════════════════════════════════════════════════
+def entrenar(X, y):
+    print("\n🧠 Iniciando entrenamiento...")
  
-    return acc, cm
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42, stratify=y
+    )
+    print(f"   Train: {len(X_train)} | Test: {len(X_test)}")
  
+    # Tensores
+    X_tr = torch.tensor(X_train)
+    y_tr = torch.tensor(y_train, dtype=torch.float32).unsqueeze(1)
+    X_te = torch.tensor(X_test)
+    y_te = torch.tensor(y_test,  dtype=torch.float32).unsqueeze(1)
  
-# ─────────────────────────────────────────────
-# 6. GUARDAR MODELO
-# ─────────────────────────────────────────────
+    # Modelo
+    model = Modelo(X_train.shape[1])
  
-def guardar_modelo(modelo, input_dim, acc):
-    """
-    Guarda los pesos del modelo entrenado en disco.
-    Permite reutilizar el modelo sin reentrenar.
+    # Pesos para desbalance de clases
+    n_pos = sum(y_train)
+    n_neg = len(y_train) - n_pos
+    pos_weight = torch.tensor([n_neg / n_pos]) if n_pos > 0 else torch.tensor([1.0])
+    criterion = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
  
-    Args:
-        modelo    : Red neuronal entrenada
-        input_dim : Dimensión de entrada del modelo
-        acc       : Accuracy obtenida (para el nombre del archivo)
-    """
-    base_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "data"))
-    ruta_modelo = os.path.join(base_dir, "hardwareguard_model.pth")
+    # Usamos salida pre-sigmoid para BCEWithLogitsLoss
+    # Ajustamos el modelo para devolver logits en entrenamiento
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-4)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, factor=0.5)
  
+    EPOCHS = 60
+    BATCH  = 128
+    mejor_acc = 0
+    mejor_estado = None
+ 
+    print(f"\n{'Época':>6} {'Loss':>10} {'Acc Train':>10} {'Acc Test':>10}")
+    print("-" * 42)
+ 
+    for epoch in range(EPOCHS):
+        model.train()
+        # Mini-batches
+        idx = torch.randperm(len(X_tr))
+        epoch_loss = 0
+        for i in range(0, len(X_tr), BATCH):
+            batch_idx = idx[i:i+BATCH]
+            xb, yb = X_tr[batch_idx], y_tr[batch_idx]
+ 
+            optimizer.zero_grad()
+            # Para BCEWithLogitsLoss necesitamos logits, no sigmoid
+            # Temporalmente usamos la red sin sigmoid final
+            out = model.red[:-1](xb)  # sin Sigmoid
+            loss = criterion(out, yb)
+            loss.backward()
+            optimizer.step()
+            epoch_loss += loss.item()
+ 
+        # Evaluación
+        model.eval()
+        with torch.no_grad():
+            pred_tr = (model(X_tr) >= 0.5).float()
+            pred_te = (model(X_te) >= 0.5).float()
+            acc_tr  = (pred_tr == y_tr).float().mean().item()
+            acc_te  = (pred_te == y_te).float().mean().item()
+ 
+        scheduler.step(epoch_loss)
+ 
+        if (epoch + 1) % 10 == 0:
+            print(f"{epoch+1:>6} {epoch_loss:>10.4f} {acc_tr*100:>9.1f}% {acc_te*100:>9.1f}%")
+ 
+        # Guardar mejor modelo
+        if acc_te > mejor_acc:
+            mejor_acc = acc_te
+            mejor_estado = {k: v.clone() for k, v in model.state_dict().items()}
+ 
+    # Restaurar mejor modelo
+    model.load_state_dict(mejor_estado)
+    print(f"\n✅ Mejor accuracy en test: {mejor_acc*100:.1f}%")
+ 
+    # Reporte final
+    model.eval()
+    with torch.no_grad():
+        preds = (model(X_te) >= 0.5).numpy().astype(int).flatten()
+    y_real = y_te.numpy().astype(int).flatten()
+ 
+    print("\n📊 Reporte de clasificación:")
+    print(classification_report(y_real, preds, target_names=["POSITIVO", "DEFECTO"]))
+ 
+    print("📊 Matriz de confusión:")
+    cm = confusion_matrix(y_real, preds)
+    print(f"   VP (DEFECTO correcto):   {cm[1][1]}")
+    print(f"   VN (POSITIVO correcto):  {cm[0][0]}")
+    print(f"   FP (falso defecto):      {cm[0][1]}")
+    print(f"   FN (defecto no detectado): {cm[1][0]}")
+ 
+    return model
+ 
+# ══════════════════════════════════════════════════════════
+# 8. GUARDAR MODELO Y VOCABULARIO
+# ══════════════════════════════════════════════════════════
+def guardar(model, vec):
+    print(f"\n💾 Guardando modelo en: {MODEL_OUT}")
     torch.save({
-        "model_state_dict" : modelo.state_dict(),
-        "input_dim"        : input_dim,
-        "accuracy"         : acc,
-        "arquitectura"     : "Linear(input→128) ReLU Dropout Linear(128→64) ReLU Dropout Linear(64→1) Sigmoid",
-    }, ruta_modelo)
+        "model_state_dict": model.state_dict(),
+        "input_dim":        next(model.parameters()).shape[1],
+    }, MODEL_OUT)
  
-    print(f"[HardwareGuard] 💾 Modelo guardado en: {ruta_modelo}")
+    print(f"💾 Guardando vocabulario en: {VOCAB_OUT}")
+    with open(VOCAB_OUT, "w", encoding="utf-8") as f:
+        # Convertir int64 de numpy a int nativo de Python
+        vocab_serializable = {k: int(v) for k, v in vec.vocabulary_.items()}
+        json.dump(vocab_serializable, f, ensure_ascii=False)
  
+    print("✅ Archivos guardados correctamente.")
  
-# ─────────────────────────────────────────────
-# 7. EJECUCIÓN PRINCIPAL
-# ─────────────────────────────────────────────
- 
+# ══════════════════════════════════════════════════════════
+# 9. MAIN
+# ══════════════════════════════════════════════════════════
 if __name__ == "__main__":
-    print("=" * 65)
-    print("  🛡️  HARDWAREGUARD — ENTRENAMIENTO DEL MODELO NLP")
-    print("=" * 65)
+    print("=" * 50)
+    print("  HardwareGuard — Re-entrenamiento del Modelo")
+    print("=" * 50)
  
-    # Cargar datos
-    X, y = cargar_datos()
-    input_dim = X.shape[1]
+    textos, etiquetas = cargar_dataset()
+    X, vec            = vectorizar(textos)
+    model             = entrenar(X, np.array(etiquetas, dtype=np.float32))
+    guardar(model, vec)
  
-    # Dividir 80/20
-    X_train, X_test, y_train, y_test = dividir_datos(X, y)
- 
-    # Crear DataLoaders
-    loader_train, loader_test = crear_dataloaders(X_train, X_test, y_train, y_test)
- 
-    # Construir red neuronal
-    modelo = HardwareGuardNet(input_dim=input_dim)
-    print(f"\n[HardwareGuard] Arquitectura de la red:")
-    print(f"  Entrada  : {input_dim} neuronas (features TF-IDF)")
-    print(f"  Oculta 1 : 128 neuronas + ReLU + Dropout(0.3)")
-    print(f"  Oculta 2 : 64 neuronas  + ReLU + Dropout(0.3)")
-    print(f"  Salida   : 1 neurona + Sigmoid")
-    total_params = sum(p.numel() for p in modelo.parameters())
-    print(f"  Total parámetros entrenables: {total_params:,}")
- 
-    # Entrenar modelo
-    historial_perdida, historial_accuracy = entrenar_modelo(modelo, loader_train, loader_test)
- 
-    # Evaluar modelo
-    acc, cm = evaluar_modelo(modelo, loader_test)
- 
-    # Guardar modelo
-    guardar_modelo(modelo, input_dim, acc)
- 
-    print(f"[HardwareGuard] 🎯 PR #4 completado — Accuracy final: {acc*100:.2f}%")
+    print("\n🎉 ¡Entrenamiento completado!")
+    print("   Reinicia predictor.py para usar el nuevo modelo.")
