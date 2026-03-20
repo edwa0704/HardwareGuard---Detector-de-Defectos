@@ -1207,7 +1207,8 @@ function render(data) {
 }
  
 // Load data
-fetch('/api/reporte')
+var base = window.location.protocol + '//' + window.location.hostname + ':5000';
+fetch(base + '/api/reporte')
     .then(r=>r.json())
     .then(data=>render(data))
     .catch(()=>{
@@ -1228,215 +1229,202 @@ HTML_TIEMPO_REAL = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HardwareGuard | Gráfico Tiempo Real</title>
+    <title>HardwareGuard | Grafico Tiempo Real</title>
     <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
     <style>
-        :root {
-            --bg:#05070f; --surface:#0d1117; --card:#111827;
-            --border:#1c2333; --green:#00ff88; --red:#ff3b5c;
-            --blue:#4d9eff; --yellow:#fbbf24; --text:#e2e8f0; --muted:#64748b;
-        }
+        :root { --bg:#05070f; --card:#111827; --border:#1c2333; --green:#00ff88; --red:#ff3b5c; --blue:#4d9eff; --text:#e2e8f0; --muted:#64748b; }
         * { margin:0; padding:0; box-sizing:border-box; }
-        body {
-            background:var(--bg); color:var(--text);
-            font-family:'Syne',sans-serif; padding:30px 20px;
-            background-image:
-                radial-gradient(ellipse at 15% 15%, rgba(0,255,136,.05) 0%, transparent 55%),
-                radial-gradient(ellipse at 85% 85%, rgba(77,158,255,.04) 0%, transparent 55%);
-        }
+        body { background:var(--bg); color:var(--text); font-family:'Syne',sans-serif; padding:30px 20px;
+            background-image: radial-gradient(ellipse at 15% 15%, rgba(0,255,136,.05) 0%, transparent 55%); }
+        .topbar { display:flex; gap:10px; margin-bottom:28px; }
+        .btn-top { font-family:'Space Mono',monospace; font-size:10px; letter-spacing:1px; text-transform:uppercase;
+            background:transparent; border:1px solid var(--muted); color:var(--muted); padding:7px 16px;
+            border-radius:8px; cursor:pointer; transition:all .2s; }
+        .btn-top:hover { border-color:var(--green); color:var(--green); }
         .header { text-align:center; margin-bottom:32px; }
         .eyebrow { font-family:'Space Mono',monospace; font-size:10px; letter-spacing:5px; color:var(--green); text-transform:uppercase; margin-bottom:10px; }
         h1 { font-size:clamp(22px,4vw,36px); font-weight:800;
             background:linear-gradient(135deg,#fff 40%,var(--green));
             -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
         .sub { font-family:'Space Mono',monospace; font-size:11px; color:var(--muted); margin-top:8px; }
-        .back-btn {
-            display:inline-flex; align-items:center; gap:8px;
-            font-family:'Space Mono',monospace; font-size:11px;
-            color:var(--green); text-decoration:none; letter-spacing:1px;
-            border:1px solid var(--green); padding:7px 16px; border-radius:8px;
-            margin-bottom:28px; transition:all .2s; cursor:pointer; background:transparent;
-        }
-        .back-btn:hover { background:var(--green); color:var(--bg); }
         .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:14px; margin-bottom:24px; }
         .kpi { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:18px; text-align:center; }
         .kpi-val { font-size:30px; font-weight:800; line-height:1; margin-bottom:5px; }
         .kpi-label { font-family:'Space Mono',monospace; font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); }
-        .kpi.green .kpi-val { color:var(--green); }
-        .kpi.red   .kpi-val { color:var(--red); }
-        .kpi.blue  .kpi-val { color:var(--blue); }
+        .kv-green { color:var(--green); } .kv-red { color:var(--red); } .kv-blue { color:var(--blue); }
         .chart-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:18px; margin-bottom:24px; }
         .chart-card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:22px; }
+        .chart-full { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:22px; margin-bottom:24px; }
         .chart-title { font-family:'Space Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--green); margin-bottom:16px; }
         .chart-wrap { position:relative; height:240px; }
         .table-card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:22px; }
-        .table-title { font-family:'Space Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:14px; }
+        .tbl-title { font-family:'Space Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:14px; }
         table { width:100%; border-collapse:collapse; }
-        thead th { font-family:'Space Mono',monospace; font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); padding:8px 12px; border-bottom:1px solid var(--border); text-align:left; }
-        tbody tr { border-bottom:1px solid rgba(255,255,255,.04); transition:background .15s; }
+        thead th { font-family:'Space Mono',monospace; font-size:9px; letter-spacing:2px; text-transform:uppercase;
+            color:var(--muted); padding:8px 12px; border-bottom:1px solid var(--border); text-align:left; }
+        tbody tr { border-bottom:1px solid rgba(255,255,255,.04); }
         tbody tr:hover { background:rgba(255,255,255,.02); }
         td { padding:12px; font-size:12px; vertical-align:middle; }
-        .td-mono { font-family:'Space Mono',monospace; font-size:11px; color:#94a3b8; }
-        .badge { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:5px; font-family:'Space Mono',monospace; font-size:10px; font-weight:700; white-space:nowrap; }
-        .badge-defect { background:rgba(255,59,92,.12); border:1px solid rgba(255,59,92,.3); color:#ff3b5c; }
-        .badge-ok { background:rgba(0,255,136,.08); border:1px solid rgba(0,255,136,.25); color:#00ff88; }
+        .td-mono { font-family:'Space Mono',monospace; font-size:11px; color:#94a3b8; white-space:nowrap; }
+        .badge { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:5px;
+            font-family:'Space Mono',monospace; font-size:10px; font-weight:700; white-space:nowrap; }
+        .bd { background:rgba(255,59,92,.12); border:1px solid rgba(255,59,92,.3); color:#ff3b5c; }
+        .bp { background:rgba(0,255,136,.08); border:1px solid rgba(0,255,136,.25); color:#00ff88; }
         .empty { text-align:center; padding:60px; font-family:'Space Mono',monospace; font-size:13px; color:var(--muted); }
-        .refresh-btn { font-family:'Space Mono',monospace; font-size:10px; letter-spacing:1px; text-transform:uppercase; background:transparent; border:1px solid var(--muted); color:var(--muted); padding:6px 14px; border-radius:7px; cursor:pointer; transition:all .2s; margin-bottom:20px; }
-        .refresh-btn:hover { border-color:var(--green); color:var(--green); }
     </style>
 </head>
 <body>
-    <button class="back-btn" onclick="window.close()">← Cerrar</button>
-    <button class="refresh-btn" onclick="cargar()">↺ Actualizar</button>
- 
+    <div class="topbar">
+        <button class="btn-top" onclick="window.close()">← Cerrar</button>
+        <button class="btn-top" onclick="cargar()">↺ Actualizar</button>
+    </div>
     <div class="header">
         <div class="eyebrow">HardwareGuard · Tiempo Real</div>
-        <h1>Gráfico de Reseñas<br>Analizadas en Vivo</h1>
-        <div class="sub" id="sub">// cargando datos...</div>
+        <h1>Grafico de Resenas Analizadas en Vivo</h1>
+        <div class="sub" id="sub">// cargando...</div>
     </div>
- 
-    <div id="contenido">
-        <div class="empty">Cargando...</div>
-    </div>
+    <div id="kpis"></div>
+    <div id="charts"></div>
+    <div id="evol"></div>
+    <div id="tabla"></div>
  
 <script>
 function esc(t){ return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
  
-function render(data) {
-    if (!data || data.length === 0) {
-        document.getElementById('contenido').innerHTML =
-            '<div class="empty">Sin reseñas analizadas aún.<br><small>Ve a la pantalla principal y analiza algunas reseñas.</small></div>';
-        document.getElementById('sub').textContent = '// sin datos aún';
+var chartDona=null, chartIdioma=null, chartEvol=null;
+ 
+function destruir(c){ if(c){ c.destroy(); } return null; }
+ 
+function render(data){
+    if(!data || data.length===0){
+        document.getElementById('sub').textContent='// sin resenas analizadas aun';
+        document.getElementById('kpis').innerHTML='<div class="empty">Sin resenas aun.<br><small>Analiza algunas resenas en la pantalla principal.</small></div>';
+        document.getElementById('charts').innerHTML='';
+        document.getElementById('evol').innerHTML='';
+        document.getElementById('tabla').innerHTML='';
         return;
     }
  
-    const total    = data.length;
-    const defectos = data.filter(d => d.resultado.includes('🚨')).length;
-    const positivos= total - defectos;
-    const pct_def  = total > 0 ? ((defectos/total)*100).toFixed(1) : 0;
+    var total    = data.length;
+    var defectos = data.filter(function(d){ return d.resultado && d.resultado.indexOf('🚨')>=0; }).length;
+    var positivos= total - defectos;
+    var pct      = total>0 ? ((defectos/total)*100).toFixed(1) : '0.0';
  
-    document.getElementById('sub').textContent =
-        `// ${total} reseñas analizadas en tiempo real`;
+    document.getElementById('sub').textContent='// '+total+' resenas analizadas en tiempo real';
  
-    // Contar por idioma
-    const idiomas = {};
-    data.forEach(d => {
-        const flag = d.resultado.split(' ')[0];
-        const nombre = {
-            '🇵🇪':'Español','🇺🇸':'Inglés','🇧🇷':'Portugués',
-            '🇫🇷':'Francés','🇮🇹':'Italiano','🇩🇪':'Alemán','🌐':'Otro'
-        }[flag] || 'Otro';
-        idiomas[nombre] = (idiomas[nombre]||0)+1;
+    // KPIs
+    document.getElementById('kpis').innerHTML=
+        '<div class="kpi-grid">'+
+        '<div class="kpi"><div class="kpi-val kv-blue">'+total+'</div><div class="kpi-label">Total</div></div>'+
+        '<div class="kpi"><div class="kpi-val kv-green">'+positivos+'</div><div class="kpi-label">Positivos</div></div>'+
+        '<div class="kpi"><div class="kpi-val kv-red">'+defectos+'</div><div class="kpi-label">Defectos</div></div>'+
+        '<div class="kpi"><div class="kpi-val '+(parseFloat(pct)>50?'kv-red':'kv-green')+'">'+pct+'%</div><div class="kpi-label">% Defectos</div></div>'+
+        '</div>';
+ 
+    // Idiomas
+    var idiomas={};
+    data.forEach(function(d){
+        var r=d.resultado||'';
+        var flag=r.split(' ')[0];
+        var n={'🇵🇪':'Espanol','🇺🇸':'Ingles','🇧🇷':'Portugues','🇫🇷':'Frances','🇮🇹':'Italiano','🇩🇪':'Aleman','🌐':'Otro'}[flag]||'Otro';
+        idiomas[n]=(idiomas[n]||0)+1;
     });
  
-    // Evolución cronológica (últimos 20)
-    const ultimos = [...data].reverse().slice(0,20);
-    const evol_labels = ultimos.map((d,i) => d.hora || `#${i+1}`);
-    const evol_data   = ultimos.map(d => d.resultado.includes('🚨') ? 1 : 0);
+    // Charts grid
+    document.getElementById('charts').innerHTML=
+        '<div class="chart-grid">'+
+        '<div class="chart-card"><div class="chart-title">// distribucion</div><div class="chart-wrap"><canvas id="cDona"></canvas></div></div>'+
+        '<div class="chart-card"><div class="chart-title">// por idioma</div><div class="chart-wrap"><canvas id="cIdioma"></canvas></div>'+
+        '</div>';
  
-    document.getElementById('contenido').innerHTML = `
-    <div class="kpi-grid">
-        <div class="kpi blue"><div class="kpi-val">${total}</div><div class="kpi-label">Total Analizadas</div></div>
-        <div class="kpi green"><div class="kpi-val">${positivos}</div><div class="kpi-label">Positivos ✅</div></div>
-        <div class="kpi red"><div class="kpi-val">${defectos}</div><div class="kpi-label">Defectos 🚨</div></div>
-        <div class="kpi ${pct_def>50?'red':'green'}"><div class="kpi-val">${pct_def}%</div><div class="kpi-label">% Defectuosos</div></div>
-    </div>
+    chartDona   = destruir(chartDona);
+    chartIdioma = destruir(chartIdioma);
  
-    <div class="chart-grid">
-        <div class="chart-card">
-            <div class="chart-title">// distribución defecto vs positivo</div>
-            <div class="chart-wrap"><canvas id="cDona"></canvas></div>
-        </div>
-        <div class="chart-card">
-            <div class="chart-title">// reseñas por idioma</div>
-            <div class="chart-wrap"><canvas id="cIdioma"></canvas></div>
-        </div>
-        <div class="chart-card" style="grid-column:1/-1">
-            <div class="chart-title">// últimas 20 reseñas (1=defecto · 0=positivo)</div>
-            <div class="chart-wrap"><canvas id="cEvol"></canvas></div>
-        </div>
-    </div>
- 
-    <div class="table-card">
-        <div class="table-title">// historial completo ordenado por hora</div>
-        <table>
-            <thead><tr><th>Hora</th><th>Reseña</th><th>Resultado</th></tr></thead>
-            <tbody>${data.map(d=>{
-                const def = d.resultado.includes('🚨');
-                const flag = d.resultado.split(' ')[0];
-                return \`<tr>
-                    <td class="td-mono">\${esc(d.hora||'')}</td>
-                    <td style="font-size:11px;color:#94a3b8;max-width:400px">\${esc(d.texto)}</td>
-                    <td><span class="badge \${def?'badge-defect':'badge-ok'}">\${flag} \${def?'🚨 DEFECTO':'✅ POSITIVO'}</span></td>
-                </tr>\`;
-            }).join('')}</tbody>
-        </table>
-    </div>`;
- 
-    // Dona
-    new Chart(document.getElementById('cDona'), {
+    chartDona = new Chart(document.getElementById('cDona'),{
         type:'doughnut',
-        data:{
-            labels:['POSITIVO ✅','DEFECTO 🚨'],
-            datasets:[{data:[positivos,defectos],
-                backgroundColor:['rgba(0,255,136,.25)','rgba(255,59,92,.25)'],
-                borderColor:['#00ff88','#ff3b5c'],borderWidth:2}]
-        },
+        data:{labels:['POSITIVO','DEFECTO'],datasets:[{data:[positivos,defectos],
+            backgroundColor:['rgba(0,255,136,.25)','rgba(255,59,92,.25)'],
+            borderColor:['#00ff88','#ff3b5c'],borderWidth:2}]},
         options:{responsive:true,maintainAspectRatio:false,
             plugins:{legend:{position:'bottom',labels:{color:'#94a3b8',font:{family:'Space Mono',size:11},padding:16}}}}
     });
  
-    // Por idioma
-    const colores = ['#4d9eff','#00ff88','#fbbf24','#ff3b5c','#a78bfa','#34d399','#f472b6'];
-    new Chart(document.getElementById('cIdioma'), {
+    var cols=['#4d9eff','#00ff88','#fbbf24','#ff3b5c','#a78bfa','#34d399'];
+    chartIdioma = new Chart(document.getElementById('cIdioma'),{
         type:'bar',
-        data:{
-            labels:Object.keys(idiomas),
-            datasets:[{label:'Reseñas',data:Object.values(idiomas),
-                backgroundColor:colores.map(c=>c+'44'),
-                borderColor:colores,borderWidth:1.5}]
-        },
+        data:{labels:Object.keys(idiomas),datasets:[{label:'Resenas',data:Object.values(idiomas),
+            backgroundColor:cols.map(function(c){return c+'44';}),
+            borderColor:cols,borderWidth:1.5}]},
         options:{responsive:true,maintainAspectRatio:false,
             plugins:{legend:{display:false}},
-            scales:{
-                x:{ticks:{color:'#64748b',font:{family:'Space Mono',size:10}},grid:{color:'rgba(255,255,255,.05)'}},
-                y:{ticks:{color:'#64748b',font:{family:'Space Mono',size:10},stepSize:1},grid:{color:'rgba(255,255,255,.06)'}}
-            }}
+            scales:{x:{ticks:{color:'#64748b',font:{family:'Space Mono',size:10}},grid:{color:'rgba(255,255,255,.05)'}},
+                    y:{ticks:{color:'#64748b',font:{family:'Space Mono',size:10},stepSize:1},grid:{color:'rgba(255,255,255,.06)'}}}}
     });
  
-    // Evolución
-    new Chart(document.getElementById('cEvol'), {
+    // Evolucion
+    var ultimos=[].concat(data).reverse().slice(0,20);
+    var evLabels=ultimos.map(function(d,i){return d.hora||('#'+(i+1));});
+    var evData  =ultimos.map(function(d){return (d.resultado&&d.resultado.indexOf('🚨')>=0)?1:0;});
+    var evColors=evData.map(function(v){return v?'rgba(255,59,92,.5)':'rgba(0,255,136,.4)';});
+    var evBorder=evData.map(function(v){return v?'#ff3b5c':'#00ff88';});
+ 
+    document.getElementById('evol').innerHTML=
+        '<div class="chart-full"><div class="chart-title">// ultimas 20 resenas (rojo=defecto · verde=positivo)</div>'+
+        '<div class="chart-wrap"><canvas id="cEvol"></canvas></div></div>';
+ 
+    chartEvol=destruir(chartEvol);
+    chartEvol=new Chart(document.getElementById('cEvol'),{
         type:'bar',
-        data:{
-            labels:evol_labels,
-            datasets:[{label:'Resultado',data:evol_data,
-                backgroundColor:evol_data.map(v=>v?'rgba(255,59,92,.4)':'rgba(0,255,136,.3)'),
-                borderColor:evol_data.map(v=>v?'#ff3b5c':'#00ff88'),
-                borderWidth:1.5}]
-        },
+        data:{labels:evLabels,datasets:[{data:evData,backgroundColor:evColors,borderColor:evBorder,borderWidth:1.5}]},
         options:{responsive:true,maintainAspectRatio:false,
             plugins:{legend:{display:false}},
-            scales:{
-                x:{ticks:{color:'#64748b',font:{family:'Space Mono',size:9},maxRotation:45},grid:{color:'rgba(255,255,255,.05)'}},
-                y:{min:0,max:1,ticks:{color:'#64748b',font:{family:'Space Mono',size:10},
-                    callback:v=>v===1?'DEFECTO':'POSITIVO'},grid:{color:'rgba(255,255,255,.06)'}}
-            }}
+            scales:{x:{ticks:{color:'#64748b',font:{family:'Space Mono',size:9},maxRotation:45},grid:{color:'rgba(255,255,255,.05)'}},
+                    y:{min:0,max:1,ticks:{color:'#64748b',font:{family:'Space Mono',size:10},
+                        callback:function(v){return v===1?'DEFECTO':'POSITIVO';}},
+                        grid:{color:'rgba(255,255,255,.06)'}}}}
     });
+ 
+    // Tabla historial
+    var filas=data.map(function(d){
+        var def=d.resultado&&d.resultado.indexOf('🚨')>=0;
+        var flag=(d.resultado||'').split(' ')[0];
+        return '<tr>'+
+            '<td class="td-mono">'+esc(d.hora||'')+'</td>'+
+            '<td style="font-size:11px;color:#94a3b8;max-width:400px">'+esc(d.texto||'')+'</td>'+
+            '<td><span class="badge '+(def?'bd':'bp')+'">'+flag+' '+(def?'🚨 DEFECTO':'✅ POSITIVO')+'</span></td>'+
+            '</tr>';
+    }).join('');
+ 
+    document.getElementById('tabla').innerHTML=
+        '<div class="table-card">'+
+        '<div class="tbl-title">// historial completo ordenado por hora</div>'+
+        '<table><thead><tr><th>Hora</th><th>Resena</th><th>Resultado</th></tr></thead>'+
+        '<tbody>'+filas+'</tbody></table></div>';
 }
  
 function cargar(){
-    fetch('/historial').then(r=>r.json()).then(d=>render(d))
-    .catch(()=>{ document.getElementById('contenido').innerHTML='<div class="empty" style="color:#ff3b5c">❌ Error al conectar</div>'; });
+    var base = window.location.protocol + '//' + window.location.hostname + ':5000';
+    fetch(base + '/historial')
+        .then(function(r){
+            if(!r.ok){ throw new Error('HTTP ' + r.status); }
+            return r.json();
+        })
+        .then(function(d){ render(d); })
+        .catch(function(err){
+            document.getElementById('sub').textContent='// error: ' + err.message;
+            document.getElementById('kpis').innerHTML='<div class="empty" style="color:#ff3b5c">'+
+                'Error al cargar datos.<br><small>Asegurate de que predictor.py este corriendo en el puerto 5000</small></div>';
+        });
 }
  
 cargar();
-// Auto-refresh cada 10 segundos
 setInterval(cargar, 10000);
 </script>
 </body>
 </html>
 """
+ 
  
 @app.route("/grafico-tiempo-real")
 def grafico_tr(): return render_template_string(HTML_TIEMPO_REAL)
