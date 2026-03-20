@@ -6,15 +6,15 @@
 HardwareGuard AI es un sistema de Procesamiento de Lenguaje Natural (NLP) que analiza reseñas de productos de hardware para detectar patrones que indican defectos de fábrica. El sistema combina múltiples capas de análisis para lograr alta precisión incluso con reseñas ambiguas, sarcásticas o en diferentes idiomas.
 Impacto empresarial: Previene que el departamento de compras adquiera lotes defectuosos de impresoras, laptops y otros equipos, reduciendo costos de garantía y devoluciones.
 
-| Dato | | Valor |
-|---|---|
-| Dataset | | 5,000 reseñas reales de hardware |
-| Modelo  | | Red Neuronal PyTorch |
-| Precisión IA | | 94% sobre dataset real |
-| Correctos | | 4,698 / 5,000 |
-| Positivos detectados | | 3,426 |
-| Defectos detectados | | 1,574 |
-| Idiomas soportados | | ES 🇵🇪 · EN 🇺🇸 · PT 🇧🇷 · FR 🇫🇷 · IT 🇮🇹 · DE 🇩🇪 |
+| Dato | Valor |
+|------|-------|
+| Dataset | 5,000 reseñas reales de hardware |
+| Modelo  | Red Neuronal PyTorch |
+| Precisión IA | 94% sobre dataset real |
+| Correctos | 4,698 / 5,000 |
+| Positivos detectados | 3,426 |
+| Defectos detectados | 1,574 |
+| Idiomas soportados | ES 🇵🇪 · EN 🇺🇸 · PT 🇧🇷 · FR 🇫🇷 · IT 🇮🇹 · DE 🇩🇪 |
 
 🧠 Motor de Análisis NLP — 6 Capas
 El sistema evalúa cada reseña en cascada hasta obtener un resultado confiable:
@@ -22,13 +22,14 @@ El sistema evalúa cada reseña en cascada hasta obtener un resultado confiable:
 >Reseña → [1] Negaciones → [2] Señales Hardware → [3] Diccionario ES nativo
 >       → [4] VADER (EN) → [5] Modelo .pth → [6] Fallback DEFECTO
 
-| Capa | | Descripción | |Ejemplo |
-| 1️⃣ Negaciones | | Detecta frases negadas antes que las señales | | "no estoy contento" → DEFECTO |
-| 2️⃣ Señales hardware | | Palabras técnicas de fallo o éxito | | "se calienta", "funciona perfecto" |
-| 3️⃣ Diccionario ES | | Expresiones peruanas y latinoamericanas | | "plata botada", "una joya" |
-| 4️⃣ VADER | | Análisis semántico en inglés | | Para texto no cubierto por capas anteriores |
-| 5️⃣ Modelo .pth | | Red neuronal entrenada con 5,000 reseñas | | Último recurso inteligente |
-| 6️⃣ Fallback | | Si nada es concluyente → DEFECTO | | Mejor alertar que ignorar un fallo |
+| Capa | Descripción | Ejemplo |
+|------|-------------|---------|
+| 1️⃣ Negaciones | Detecta frases negadas antes que las señales | "no estoy contento" → DEFECTO |
+| 2️⃣ Señales hardware | Palabras técnicas de fallo o éxito | "se calienta", "funciona perfecto" |
+| 3️⃣ Diccionario ES | Expresiones peruanas y latinoamericanas | "plata botada", "una joya" |
+| 4️⃣ VADER | Análisis semántico en inglés | Para texto no cubierto por capas anteriores |
+| 5️⃣ Modelo .pth | Red neuronal entrenada con 5,000 reseñas | Último recurso inteligente |
+| 6️⃣ Fallback | Si nada es concluyente → DEFECTO | Mejor alertar que ignorar un fallo |
 
 Características adicionales:
 
@@ -74,13 +75,13 @@ Git
 
 Terminales compatibles
 
-| Terminal | | Sistema | | Comando Python |
-|---| |---|
-| CMD | | Windows | | python |
-| PowerShell | | Windows | | python |
-| Git Bash | | Windows | | python |
-| cmder | | Windows | | python |
-| Terminal | | Linux / Mac | | python3 |
+| Terminal | Sistema | Comando Python |
+|----------|---------|----------------|
+| CMD | Windows | python |
+| PowerShell | Windows | python |
+| Git Bash | Windows | python |
+| cmder | Windows | python |
+| Terminal | Linux / Mac | python3 |
 
 >✅ En Windows todos los terminales aceptan `/` en las rutas.
 >⚠️ En Linux y Mac usa `python3` en lugar de `python`.
@@ -140,10 +141,10 @@ Interfaz web — Pantalla principal
 >⚠️ Todos los campos son obligatorios antes de analizar.
 Botones de reportes
 
-| Botón | | Descripción |
-|---| |---|
-| 📊 Gráfico Tiempo Real | |Estadísticas de las reseñas analizadas en vivo |
-| 📁 Gráfico Dataset | | Análisis completo de las 5,000 reseñas del dataset |
+| Botón | Descripción |
+|-------|-------------|
+| 📊 Gráfico Tiempo Real | Estadísticas de las reseñas analizadas en vivo |
+| 📁 Gráfico Dataset | Análisis completo de las 5,000 reseñas del dataset |
 
 Gráfico Tiempo Real incluye:
 
@@ -211,37 +212,37 @@ python src/reporte_visual.py
 ```
 📊 Resultados del Modelo
 
-| Métrica | | Valor |
-|---| |---|
-| Dataset | | 5,000 reseñas de hardware |
-| División | | 80% entrenamiento / 20% prueba |
-| Precisión IA | | 94% sobre dataset completo |
-| Correctos | | 4,698 / 5,000 |
-| Accuracy entrenamiento | | 100% |
-| Defectos en dataset | | 1,574 (31.5%) |
-| Positivos en dataset | | 3,426 (68.5%) |
+| Métrica | Valor |
+|---------|-------|
+| Dataset | 5,000 reseñas de hardware |
+| División | 80% entrenamiento / 20% prueba |
+| Precisión IA | 94% sobre dataset completo |
+| Correctos | 4,698 / 5,000 |
+| Accuracy entrenamiento | 100% |
+| Defectos en dataset | 1,574 (31.5%) |
+| Positivos en dataset | 3,426 (68.5%) |
 
 🧰 Tecnologías Utilizadas
 
-| Librería | | Uso |
-|---| |---|
-| Flask | | Servidor web y API REST |
-| PyTorch | | Red neuronal de clasificación |
-| scikit-learn | | Vectorización TF-IDF |
-| VADER Sentiment | | Análisis de sentimiento en inglés |
-| TextBlob | | Traducción automática de idiomas |
-| langdetect | | Detección de idioma |
-| pandas / numpy | | Manipulación de datos |
-| nltk | | Pipeline de limpieza de texto | 
-| Chart.js | | Gráficos interactivos en el navegador | 
+| Librería | Uso |
+|----------|-----|
+| Flask | Servidor web y API REST |
+| PyTorch | Red neuronal de clasificación |
+| scikit-learn | Vectorización TF-IDF |
+| VADER Sentiment | Análisis de sentimiento en inglés |
+| TextBlob | Traducción automática de idiomas |
+| langdetect | Detección de idioma |
+| pandas / numpy | Manipulación de datos |
+| nltk | Pipeline de limpieza de texto | 
+| Chart.js | Gráficos interactivos en el navegador | 
 
 📅 Historial de Versiones
 
-| Versión | | Descripción |
-|---| |---| 
-| v1.0 | | Motor NLP 6 capas + modelo .pth + interfaz web |
-| v1.1 | | Gráfico Dataset (94% precisión) + Gráfico Tiempo Real |
-| v1.2 | | Formulario completo + 4 gráficos tiempo real + requirements-minimal.txt
+| Versión | Descripción |
+|---------|-------------| 
+| v1.0 | Motor NLP 6 capas + modelo .pth + interfaz web |
+| v1.1 | Gráfico Dataset (94% precisión) + Gráfico Tiempo Real |
+| v1.2 | Formulario completo + 4 gráficos tiempo real + requirements-minimal.txt
 
 👨‍💻 Autor Frank — Proyecto Semana 3
 HardwareGuard AI: Detector de Defectos vía Análisis de Sentimiento en Tiempo Real
