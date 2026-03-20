@@ -1,25 +1,91 @@
 [
     {
-        "hora": "12:18:29",
-        "texto": "Sí claro, excelente calidad... se rompió en dos días",
+        "hora": "09:38:48",
+        "texto": "Does the job but runs a bit warm sometimes, nothing critical",
+        "producto": "Crucial Ballistix 32GB",
+        "categoria": "Memoria RAM",
+        "rating": "3",
+        "analista": "John Smith",
+        "resultado": "🇺🇸 POSITIVO ✅",
+        "probabilidad": 0.0
+    },
+    {
+        "hora": "09:38:22",
+        "texto": "Stopped working after one week, complete waste of money",
+        "producto": "ASUS VivoBook 14",
+        "categoria": "Laptop",
+        "rating": "1",
+        "analista": "John Smith",
+        "resultado": "🇺🇸 DEFECTO 🚨",
+        "probabilidad": 100.0
+    },
+    {
+        "hora": "09:37:55",
+        "texto": "Best GPU I've ever had, works flawlessly after 3 months",
+        "producto": "NVIDIA GTX 1660",
+        "categoria": "Tarjeta de Video",
+        "rating": "5",
+        "analista": "John Smith",
+        "resultado": "🇺🇸 POSITIVO ✅",
+        "probabilidad": 0.0
+    },
+    {
+        "hora": "09:36:10",
+        "texto": "Funciona bien pero el empaque llegó algo golpeado",
+        "producto": "ADATA XPG 8GB",
+        "categoria": "Memoria RAM",
+        "rating": "4",
+        "analista": "MARIA TORRES",
+        "resultado": "🇵🇪 POSITIVO ✅",
+        "probabilidad": 0.0
+    },
+    {
+        "hora": "09:35:23",
+        "texto": "El vendedor fue muy amable pero el monitor tarda en encender",
+        "producto": "AOC 24G2",
+        "categoria": "Monitor",
+        "rating": "3",
+        "analista": "Carlos Lima",
         "resultado": "🇵🇪 DEFECTO 🚨",
         "probabilidad": 100.0
     },
     {
-        "hora": "12:18:15",
-        "texto": "No es perfecto pero cumple bien su función",
+        "hora": "09:34:22",
+        "texto": "Me llegó rápido pero no estoy contento con el rendimiento",
+        "producto": "HP Pavilion 15",
+        "categoria": "Laptop",
+        "rating": "2",
+        "analista": "Pedro Quispe",
+        "resultado": "🇵🇪 DEFECTO 🚨",
+        "probabilidad": 100.0
+    },
+    {
+        "hora": "09:33:24",
+        "texto": "Ni muy buena ni muy mala, hace lo que promete para uso básico",
+        "producto": "Canon PIXMA G3110",
+        "categoria": "Impresora",
+        "rating": "3",
+        "analista": "Jorge Salas",
         "resultado": "🇵🇪 POSITIVO ✅",
         "probabilidad": 0.0
     },
     {
-        "hora": "12:17:56",
-        "texto": "Una joya de tablet, rápida, sin fallas y la batería dura todo el día",
-        "resultado": "🇵🇪 POSITIVO ✅",
-        "probabilidad": 0.0
+        "hora": "09:27:16",
+        "texto": "Ni muy buena ni muy mala, hace lo que promete para uso básico",
+        "producto": "Acer Aspire 5",
+        "categoria": "Laptop",
+        "rating": "3",
+        "analista": "Rosa Mamani",
+        "resultado": "🇵🇪 DEFECTO 🚨",
+        "probabilidad": 100.0
     },
     {
-        "hora": "12:17:42",
-        "texto": "Al inicio parecía bueno, pero después de unos días dejó de funcionar",
+        "hora": "09:26:19",
+        "texto": "No es perfecta pero cumple bien su función, sin quejas graves",
+        "producto": "Acer Aspire 5",
+        "categoria": "Laptop",
+        "rating": "3",
+        "analista": "Rosa Mamani",
         "resultado": "🇵🇪 DEFECTO 🚨",
         "probabilidad": 100.0
     }

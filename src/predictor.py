@@ -137,6 +137,9 @@ SEÑALES_DEFECTO = [
     "ya no sirve", "ya no responde", "ya no prende",
     "duró poco", "duro poco", "duró nada", "duro nada",
     "se arruinó", "se arruino", "se malogró", "se malogro",
+    "pésima calidad", "pesima calidad", "pésimo producto", "pesimo producto",
+    "se descompuso", "descompuso", "se echó a perder", "se echo a perder",
+    "dejó de servir", "dejo de servir", "al primer mes", "al mes se",
     "se dañó", "se daño", "se rompió", "se rompio",
     "se apagó solo", "se apago solo",
     "se murió", "se murio",
@@ -169,6 +172,12 @@ SEÑALES_POSITIVO = [
     # PT / FR / IT / DE
     "ótimo", "perfeito", "funciona bem", "parfait", "ottimo", "funziona",
     "schnell", "gut", "funktioniert",
+    "cumple bien", "sin quejas", "sin quejas graves", "hace lo que promete",
+    "funciona bien", "en general bien", "does the job", "works fine",
+    "no complaints", "sin problemas graves",
+    "cumple bien", "sin quejas", "sin quejas graves", "hace lo que promete",
+    "funciona bien", "en general bien", "does the job", "works fine",
+    "no complaints", "sin problemas graves", "cumple su función",
     # palabras que el sistema anterior fallaba
     "vuela", "joya", "original", "increíble",
 ]
@@ -182,6 +191,7 @@ SEÑALES_POSITIVO = [
 SENTIMIENTOS_ES_EN = {
     # ── Muy negativos (-1.0) ──
     "porquería": -1.0, "porqueria": -1.0, "pésimo": -1.0, "pesimo": -1.0,
+    "pésima calidad": -1.0, "pesima calidad": -1.0, "se descompuso": -1.0, "descompuso": -1.0,
     "malísimo": -1.0, "malisimo": -1.0, "horrible": -1.0, "espantoso": -1.0,
     "una basura": -1.0, "es basura": -1.0, "pura basura": -1.0,
     "no sirve para nada": -1.0, "no vale nada": -1.0, "lo peor": -1.0,
@@ -216,13 +226,13 @@ SENTIMIENTOS_ES_EN = {
     "poor quality": -0.7, "bad quality": -0.7, "subpar": -0.7,
  
     # ── Levemente negativos (-0.4) ──
-    "regular": -0.4, "más o menos": -0.4, "mas o menos": -0.4,
+    # NOTA: palabras como "regular", "más o menos" son NEUTRAS, no defectos
+    # Solo incluir las que claramente indican insatisfacción con el producto
     "podría ser mejor": -0.4, "podria ser mejor": -0.4,
-    "le falta": -0.4, "le faltan": -0.4, "mejorable": -0.4,
     "no es lo que esperaba": -0.4, "algo lento": -0.4,
     "medio lento": -0.4, "medio malo": -0.4,
-    "so so": -0.4, "mediocre": -0.4, "average at best": -0.4,
-    "could be better": -0.4, "not great": -0.4,
+    "not great": -0.4,
+    # NO incluir "no es perfecta" / "not perfect" — solo reconocen imperfección, no defecto
  
     # ── Muy positivos (+1.0) ──
     "joya": 1.0, "una joya": 1.0, "es una joya": 1.0,
@@ -257,6 +267,15 @@ SENTIMIENTOS_ES_EN = {
     "sirve": 0.4, "funciona": 0.4, "cumple": 0.4,
     "aceptable": 0.4, "correcto": 0.4, "correcta": 0.4,
     "decent": 0.4, "okay": 0.4, "ok": 0.4, "fine": 0.4, "works": 0.4,
+    # frases ambiguas positivas — producto funciona aunque no sea perfecto
+    "cumple bien": 0.7, "cumple su función": 0.7, "cumple su funcion": 0.7,
+    "sin quejas": 0.7, "sin quejas graves": 0.7, "sin problemas graves": 0.7,
+    "funciona bien": 0.7, "en general bien": 0.6, "en general está bien": 0.6,
+    "hace lo que promete": 0.6, "para uso básico": 0.5, "para uso basico": 0.5,
+    "nada del otro mundo": 0.4, "cumple con lo básico": 0.5,
+    "no tiene fallas graves": 0.7, "sin fallas graves": 0.7,
+    "does the job": 0.6, "gets the job done": 0.6, "works fine": 0.6,
+    "no complaints": 0.7, "nothing critical": 0.5,
 }
  
 def aplicar_negaciones(texto_lower):
@@ -757,10 +776,52 @@ HTML = """
 </div>
  
 <div class="card">
-    <div class="label">// reseña del cliente</div>
+    <div class="label">// datos del análisis</div>
+    <div class="form-grid">
+        <div class="field">
+            <div class="field-label">Categoría *</div>
+            <select id="fCategoria" onchange="actualizarProductos()">
+                <option value="">-- Seleccionar --</option>
+                <option>Monitor</option>
+                <option>Laptop</option>
+                <option>Procesador</option>
+                <option>Tarjeta de Video</option>
+                <option>Memoria RAM</option>
+                <option>Impresora</option>
+                <option>Otro Hardware</option>
+            </select>
+        </div>
+        <div class="field">
+            <div class="field-label">Producto *</div>
+            <select id="fProductoSel" onchange="checkOtroProducto()">
+                <option value="">-- Selecciona categoría primero --</option>
+            </select>
+            <input id="fProductoOtro" type="text" placeholder="Escribe el nombre del producto..."
+                style="display:none;margin-top:6px">
+        </div>
+        <div class="field">
+            <div class="field-label">Rating *</div>
+            <select id="fRating">
+                <option value="">-- Seleccionar --</option>
+                <option value="1">★☆☆☆☆ (1)</option>
+                <option value="2">★★☆☆☆ (2)</option>
+                <option value="3">★★★☆☆ (3)</option>
+                <option value="4">★★★★☆ (4)</option>
+                <option value="5">★★★★★ (5)</option>
+            </select>
+        </div>
+        <div class="field">
+            <div class="field-label">Analista *</div>
+            <input id="fAnalista" type="text" placeholder="Ej: Juan Pérez...">
+        </div>
+    </div>
+    <div class="label" style="margin-top:16px">// reseña del cliente</div>
     <textarea id="txt"
         placeholder="Ej: &quot;El vendedor fue muy amable, pero la tablet se calienta y se apaga sola&quot; — cualquier idioma...">
     </textarea>
+    <div id="formError" style="color:#ff3b5c;font-family:Space Mono,monospace;font-size:11px;margin-top:8px;display:none">
+        ⚠ Completa todos los campos antes de analizar
+    </div>
     <button class="btn" id="btnA" onclick="analizar()">▶ Analizar Producto</button>
     <div class="btn-row">
         <button class="btn btn-tr" onclick="window.open('/grafico-tiempo-real','_blank')">📊 Gráfico Tiempo Real</button>
@@ -804,12 +865,60 @@ function dibujar(data){
     </table>`;
 }
  
+var PRODUCTOS_POR_CAT = {
+    'Monitor':        ['AOC 24G2','BenQ GW2480','GIGABYTE G27FC','LG 24MK400H','Samsung T35F 27"','Otro...'],
+    'Laptop':         ['ASUS VivoBook 14','Acer Aspire 5','Dell Inspiron 15','HP Pavilion 15','Lenovo ThinkPad T14','Otro...'],
+    'Procesador':     ['AMD Ryzen 5 5600','AMD Ryzen 7 3700X','Intel Core i3-13100','Intel Core i5-12400','Intel Core i7-1355U','Otro...'],
+    'Tarjeta de Video':['AMD RX 6600','ASUS GTX 1650','GIGABYTE RTX 3060','MSI RX 580','NVIDIA GTX 1660','Otro...'],
+    'Memoria RAM':    ['ADATA XPG 8GB','Corsair Vengeance 8GB','Crucial Ballistix 32GB','HyperX Impact 16GB','Kingston Fury Beast 16GB','Otro...'],
+    'Impresora':      ['Canon PIXMA G3110','Epson EcoTank L3250','Epson L4260','HP LaserJet Pro M15w','Xerox Phaser 7100','Otro...'],
+    'Otro Hardware':  ['Otro...']
+};
+ 
+function actualizarProductos(){
+    var cat = document.getElementById('fCategoria').value;
+    var sel = document.getElementById('fProductoSel');
+    var otroInput = document.getElementById('fProductoOtro');
+    sel.innerHTML = '<option value="">-- Seleccionar producto --</option>';
+    otroInput.style.display='none';
+    if(!cat) return;
+    var prods = PRODUCTOS_POR_CAT[cat] || ['Otro...'];
+    prods.forEach(function(p){
+        var opt = document.createElement('option');
+        opt.value = p === 'Otro...' ? 'otro' : p;
+        opt.textContent = p;
+        sel.appendChild(opt);
+    });
+}
+ 
+function checkOtroProducto(){
+    var sel = document.getElementById('fProductoSel');
+    var otroInput = document.getElementById('fProductoOtro');
+    otroInput.style.display = sel.value === 'otro' ? 'block' : 'none';
+    if(sel.value !== 'otro') otroInput.value = '';
+}
+ 
 function analizar(){
-    const btn=document.getElementById('btnA');
-    const txt=document.getElementById('txt').value.trim();
-    if(!txt) return;
+    const btn     = document.getElementById('btnA');
+    const txt     = document.getElementById('txt').value.trim();
+    const sel     = document.getElementById('fProductoSel');
+    const prodSel = sel.value;
+    const prodOtro= document.getElementById('fProductoOtro').value.trim();
+    const prod    = prodSel === 'otro' ? prodOtro : prodSel;
+    const cat     = document.getElementById('fCategoria').value;
+    const rating  = document.getElementById('fRating').value;
+    const analista= document.getElementById('fAnalista').value.trim();
+    const errDiv  = document.getElementById('formError');
+ 
+    if(!txt || !prod || !cat || !rating || !analista || (sel.value==='otro' && !prodOtro)){
+        errDiv.style.display='block';
+        return;
+    }
+    errDiv.style.display='none';
     btn.classList.add('loading'); btn.textContent='⏳ Analizando...';
-    fetch('/predecir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({texto:txt})})
+ 
+    fetch('/predecir',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({texto:txt, producto:prod, categoria:cat, rating:rating, analista:analista})})
     .then(r=>r.json()).then(d=>{
         dibujar(d.historial);
         document.getElementById('txt').value='';
@@ -1286,13 +1395,13 @@ HTML_TIEMPO_REAL = """
     </div>
     <div id="kpis"></div>
     <div id="charts"></div>
-    <div id="evol"></div>
+ 
     <div id="tabla"></div>
  
 <script>
 function esc(t){ return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
  
-var chartDona=null, chartIdioma=null, chartEvol=null;
+var chartDona=null, chartIdioma=null;
  
 function destruir(c){ if(c){ c.destroy(); } return null; }
  
@@ -1301,7 +1410,7 @@ function render(data){
         document.getElementById('sub').textContent='// sin resenas analizadas aun';
         document.getElementById('kpis').innerHTML='<div class="empty">Sin resenas aun.<br><small>Analiza algunas resenas en la pantalla principal.</small></div>';
         document.getElementById('charts').innerHTML='';
-        document.getElementById('evol').innerHTML='';
+ 
         document.getElementById('tabla').innerHTML='';
         return;
     }
@@ -1331,11 +1440,32 @@ function render(data){
         idiomas[n]=(idiomas[n]||0)+1;
     });
  
-    // Charts grid
+    // Contar por categoria
+    var categorias={};
+    data.forEach(function(d){
+        var c=d.categoria||'Sin categoría';
+        if(!categorias[c]) categorias[c]={def:0,pos:0};
+        if(d.resultado&&d.resultado.indexOf('🚨')>=0) categorias[c].def++;
+        else categorias[c].pos++;
+    });
+ 
+    // Contar por rating
+    var ratings={'1':{def:0,pos:0},'2':{def:0,pos:0},'3':{def:0,pos:0},'4':{def:0,pos:0},'5':{def:0,pos:0}};
+    data.forEach(function(d){
+        var r=d.rating||'';
+        if(ratings[r]){
+            if(d.resultado&&d.resultado.indexOf('🚨')>=0) ratings[r].def++;
+            else ratings[r].pos++;
+        }
+    });
+ 
+    // Charts grid — ahora 4 graficos
     document.getElementById('charts').innerHTML=
         '<div class="chart-grid">'+
         '<div class="chart-card"><div class="chart-title">// distribucion</div><div class="chart-wrap"><canvas id="cDona"></canvas></div></div>'+
-        '<div class="chart-card"><div class="chart-title">// por idioma</div><div class="chart-wrap"><canvas id="cIdioma"></canvas></div>'+
+        '<div class="chart-card"><div class="chart-title">// por idioma</div><div class="chart-wrap"><canvas id="cIdioma"></canvas></div></div>'+
+        '<div class="chart-card"><div class="chart-title">// defectos por categoría</div><div class="chart-wrap"><canvas id="cCat"></canvas></div></div>'+
+        '<div class="chart-card"><div class="chart-title">// predicción vs rating ★</div><div class="chart-wrap"><canvas id="cRating"></canvas></div></div>'+
         '</div>';
  
     chartDona   = destruir(chartDona);
@@ -1363,44 +1493,67 @@ function render(data){
     });
  
     // Evolucion
-    var ultimos=[].concat(data).reverse().slice(0,20);
-    var evLabels=ultimos.map(function(d,i){return d.hora||('#'+(i+1));});
-    var evData  =ultimos.map(function(d){return (d.resultado&&d.resultado.indexOf('🚨')>=0)?1:0;});
-    var evColors=evData.map(function(v){return v?'rgba(255,59,92,.5)':'rgba(0,255,136,.4)';});
-    var evBorder=evData.map(function(v){return v?'#ff3b5c':'#00ff88';});
  
-    document.getElementById('evol').innerHTML=
-        '<div class="chart-full"><div class="chart-title">// ultimas 20 resenas (rojo=defecto · verde=positivo)</div>'+
-        '<div class="chart-wrap"><canvas id="cEvol"></canvas></div></div>';
  
-    chartEvol=destruir(chartEvol);
-    chartEvol=new Chart(document.getElementById('cEvol'),{
+ 
+ 
+    // Chart categorias
+    var catKeys=Object.keys(categorias);
+    new Chart(document.getElementById('cCat'),{
         type:'bar',
-        data:{labels:evLabels,datasets:[{data:evData,backgroundColor:evColors,borderColor:evBorder,borderWidth:1.5}]},
+        data:{labels:catKeys,datasets:[
+            {label:'POSITIVO',data:catKeys.map(function(c){return categorias[c].pos;}),
+             backgroundColor:'rgba(0,255,136,.2)',borderColor:'#00ff88',borderWidth:1.5},
+            {label:'DEFECTO', data:catKeys.map(function(c){return categorias[c].def;}),
+             backgroundColor:'rgba(255,59,92,.2)',borderColor:'#ff3b5c',borderWidth:1.5}
+        ]},
         options:{responsive:true,maintainAspectRatio:false,
-            plugins:{legend:{display:false}},
-            scales:{x:{ticks:{color:'#64748b',font:{family:'Space Mono',size:9},maxRotation:45},grid:{color:'rgba(255,255,255,.05)'}},
-                    y:{min:0,max:1,ticks:{color:'#64748b',font:{family:'Space Mono',size:10},
-                        callback:function(v){return v===1?'DEFECTO':'POSITIVO';}},
-                        grid:{color:'rgba(255,255,255,.06)'}}}}
+            plugins:{legend:{labels:{color:'#94a3b8',font:{family:'Space Mono',size:10}}}},
+            scales:{x:{ticks:{color:'#64748b',font:{family:'Space Mono',size:9},maxRotation:30},grid:{color:'rgba(255,255,255,.05)'}},
+                    y:{ticks:{color:'#64748b',font:{family:'Space Mono',size:9},stepSize:1},grid:{color:'rgba(255,255,255,.06)'}}}}
     });
+ 
+    // Chart rating vs prediccion
+    var rKeys=['1','2','3','4','5'];
+    new Chart(document.getElementById('cRating'),{
+        type:'bar',
+        data:{labels:rKeys.map(function(r){return '★'+r;}),datasets:[
+            {label:'POSITIVO',data:rKeys.map(function(r){return ratings[r].pos;}),
+             backgroundColor:'rgba(0,255,136,.2)',borderColor:'#00ff88',borderWidth:1.5},
+            {label:'DEFECTO', data:rKeys.map(function(r){return ratings[r].def;}),
+             backgroundColor:'rgba(255,59,92,.2)',borderColor:'#ff3b5c',borderWidth:1.5}
+        ]},
+        options:{responsive:true,maintainAspectRatio:false,
+            plugins:{legend:{labels:{color:'#94a3b8',font:{family:'Space Mono',size:10}}}},
+            scales:{x:{ticks:{color:'#64748b',font:{family:'Space Mono',size:10}},grid:{color:'rgba(255,255,255,.05)'}},
+                    y:{ticks:{color:'#64748b',font:{family:'Space Mono',size:9},stepSize:1},grid:{color:'rgba(255,255,255,.06)'}}}}
+    });
+ 
+ 
  
     // Tabla historial
     var filas=data.map(function(d){
         var def=d.resultado&&d.resultado.indexOf('🚨')>=0;
         var flag=(d.resultado||'').split(' ')[0];
+        var rt=parseInt(d.rating)||0;
+        var stars=rt>0?'★'.repeat(rt)+'☆'.repeat(5-rt):'-';
         return '<tr>'+
             '<td class="td-mono">'+esc(d.hora||'')+'</td>'+
-            '<td style="font-size:11px;color:#94a3b8;max-width:400px">'+esc(d.texto||'')+'</td>'+
+            '<td style="font-size:11px;font-family:Space Mono,monospace;color:#e2e8f0;white-space:nowrap">'+esc(d.producto||'-')+'</td>'+
+            '<td style="font-size:10px;font-family:Space Mono,monospace;color:#64748b;white-space:nowrap">'+esc(d.categoria||'-')+'</td>'+
+            '<td style="font-size:11px;color:#fbbf24;white-space:nowrap">'+stars+'</td>'+
+            '<td style="font-size:11px;color:#94a3b8;max-width:300px">'+esc(d.texto||'')+'</td>'+
             '<td><span class="badge '+(def?'bd':'bp')+'">'+flag+' '+(def?'🚨 DEFECTO':'✅ POSITIVO')+'</span></td>'+
+            '<td style="font-size:10px;font-family:Space Mono,monospace;color:#64748b;white-space:nowrap">'+esc(d.analista||'-')+'</td>'+
             '</tr>';
     }).join('');
  
     document.getElementById('tabla').innerHTML=
         '<div class="table-card">'+
         '<div class="tbl-title">// historial completo ordenado por hora</div>'+
-        '<table><thead><tr><th>Hora</th><th>Resena</th><th>Resultado</th></tr></thead>'+
-        '<tbody>'+filas+'</tbody></table></div>';
+        '<div style="overflow-x:auto">'+
+        '<table><thead><tr><th>Hora</th><th>Producto</th><th>Cat</th><th>★</th><th>Resena</th><th>Resultado</th><th>Analista</th></tr></thead>'+
+        '<tbody>'+filas+'</tbody></table></div></div>';
 }
  
 function cargar(){
@@ -1458,11 +1611,19 @@ def api_limpiar(): return jsonify({"historial": gestionar_historial(limpiar=True
 @app.route("/predecir", methods=["POST"])
 def api_predecir():
     data = request.get_json()
-    texto = data.get("texto", "")
+    texto    = data.get("texto", "")
+    producto = data.get("producto", "")
+    categoria= data.get("categoria", "")
+    rating   = data.get("rating", "")
+    analista = data.get("analista", "")
     res, prob = predecir(texto, modelo, vectorizador)
     entrada = {
         "hora":        datetime.now().strftime("%H:%M:%S"),
         "texto":       texto,
+        "producto":    producto,
+        "categoria":   categoria,
+        "rating":      rating,
+        "analista":    analista,
         "resultado":   res,
         "probabilidad": prob
     }
