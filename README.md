@@ -247,54 +247,75 @@ python src/reporte_visual.py
 👨‍💻 Autor Frank — Proyecto Semana 3
 HardwareGuard AI: Detector de Defectos vía Análisis de Sentimiento en Tiempo Real
 
-Reporte de Evaluación de Desempeño Técnico
-Proyecto: Motor NLP para Detección de Defectos en Hardware y Análisis Web
-Calificación Final: 16 / 20
-Nivel de Impacto: Alto (Proyecto con excelente base lógica, pero con oportunidades de mejora en robustez y buenas prácticas de ingeniería).
+# 🏢 Grupo Almerco - Evaluación de Desempeño Técnico (Practicantes)
 
-1. Resumen Ejecutivo
-El proyecto demuestra una comprensión sólida de los ciclos de vida de datos (ETL) y la integración de modelos de Machine Learning en aplicaciones web. La arquitectura propuesta es ambiciosa y está bien estructurada, destacando un enfoque pragmático al combinar reglas de negocio, análisis léxico (VADER) y redes neuronales (PyTorch) como mecanismo de fallback. El diseño de la interfaz web y la visualización de datos aportan un valor tangible al producto final.
+> **Proyecto:** Motor NLP para Detección de Defectos en Hardware y Análisis Web  
+> **Nivel de Impacto:** Alto 🚀 (Proyecto con excelente base lógica, pero con oportunidades de mejora en robustez y buenas prácticas de ingeniería).
 
-Sin embargo, para que este proyecto pase de ser un "prototipo funcional" a un "sistema listo para producción", es imperativo corregir ciertas vulnerabilidades relacionadas con la gestión de dependencias, el manejo de rutas y la programación defensiva.
+| Criterio | Resultado | Estado |
+| :--- | :---: | :---: |
+| **Calificación Final** | **16 / 20** | 🟡 Aprobado con Observaciones |
+| **Arquitectura NLP** | Excelente | 🌟 |
+| **Modularidad** | Bueno | ✅ |
+| **Robustez y Manejo de Errores**| Deficiente | ❌ |
 
-2. Análisis de Fortalezas (Lo que se hizo muy bien)
-Arquitectura Multi-Capa (NLP): La decisión de utilizar un pipeline escalonado (reglas > VADER > Traducción > PyTorch) demuestra un excelente criterio analítico. Evita depender exclusivamente del modelo pesado para casos simples, optimizando los recursos computacionales.
+---
 
-Modularidad y Separación de Responsabilidades (SoC): La estructura del proyecto (data/, src/, reports/) y la división lógica de los scripts (preprocesamiento, vectorización, entrenamiento) facilitan la lectura y el escalamiento del código.
+## 🎯 1. Resumen Ejecutivo
 
-Visualización y Entrega de Valor: La implementación de una interfaz web con reportes interactivos (Chart.js) demuestra que no solo se pensó en el algoritmo, sino en el usuario final que consumirá estos datos.
+El proyecto demuestra una comprensión sólida de los ciclos de vida de datos (ETL) y la integración de modelos de Machine Learning en aplicaciones web. La arquitectura propuesta es ambiciosa y está bien estructurada, destacando un enfoque pragmático al combinar reglas de negocio, análisis léxico (VADER) y redes neuronales (PyTorch) como mecanismo de *fallback*.
 
-3. Áreas Críticas de Mejora (Riesgos de Ejecución)
-Estos puntos son los que restan puntuación, ya que comprometen la estabilidad del sistema en diferentes entornos.
+Sin embargo, para que este proyecto pase de ser un **prototipo funcional** a un **sistema listo para producción**, es imperativo corregir vulnerabilidades críticas relacionadas con la gestión de dependencias, el manejo de rutas y la programación defensiva.
 
-Efectos Secundarios en Tiempo de Importación (Import Time): * El Problema: En src/nlp_pipeline.py, la carga de stopwords.words("spanish") ocurre a nivel de módulo. Si el entorno donde se despliega (por ejemplo, un servidor nuevo o un contenedor Docker) no tiene los recursos de NLTK descargados, la aplicación colapsará inmediatamente al intentar importar el archivo, impidiendo siquiera que arranque la UI.
+---
 
-La Solución: Encapsular la inicialización. Se debe crear una función (ej. iniciar_nltk()) que maneje un bloque try/except e incluya nltk.download(...) antes de asignar las stopwords.
+## 🟢 2. Análisis de Fortalezas (Lo que se hizo muy bien)
 
-Inconsistencia en la Gestión del Estado (Rutas de Archivos):
+* **Arquitectura Multi-Capa (NLP):** La decisión de utilizar un pipeline escalonado (`Reglas` ➔ `VADER` ➔ `Traducción` ➔ `PyTorch`) demuestra un excelente criterio analítico. Optimiza recursos al no depender exclusivamente del modelo pesado para casos simples.
+* **Modularidad y Separación de Responsabilidades (SoC):** La estructura del proyecto (`data/`, `src/`, `reports/`) y la división lógica de los scripts facilitan la lectura y el escalamiento del código.
+* **Visualización y Entrega de Valor:** La implementación de una UI web con reportes interactivos (Chart.js) aporta un valor tangible al producto final y demuestra enfoque en el usuario.
 
-El Problema: Existe una desincronización en el guardado de datos. src/app.py apunta a una ruta relativa en la raíz ("historial_resenas.json"), mientras que src/predictor.py usa una ruta construida (os.path.join(BASE_DIR, "historial_resenas.json")). Dependiendo de desde dónde se ejecute el sistema, se crearán historiales paralelos y la UI no mostrará los datos reales.
+---
 
-La Solución: Definir una única fuente de verdad (SSOT). Centralizar la constante HISTORIAL_PATH (usando rutas absolutas con BASE_DIR) y exportarla para que todos los módulos la consuman.
+## 🔴 3. Áreas Críticas de Mejora (Riesgos de Ejecución)
 
-4. Oportunidades de Refactorización (Deuda Técnica)
-Ausencia de Programación Defensiva en ETL: * En src/preprocess.py, se asume ciegamente la existencia de las columnas review_id, sentiment e is_defective. En un entorno real, los esquemas de datos mutan. Es necesario implementar validaciones tempranas (ej. verificar df.columns) y lanzar excepciones descriptivas (o registrar logs) en lugar de permitir que el sistema falle abruptamente con un KeyError.
+A continuación, los puntos que comprometen la estabilidad del sistema y requieren atención inmediata:
 
-Validación de Dependencias NLTK: * Se hace referencia a punkt_tab en la documentación y el código, un recurso que no es estándar en las versiones habituales de NLTK. Esto genera confusión técnica. Se debe auditar y exigir estrictamente solo los paquetes válidos (punkt, stopwords).
+<details>
+<summary><b>⚠️ Efectos Secundarios en Tiempo de Importación (Import Time)</b></summary>
+<br>
 
-Optimización de Expresiones Regulares:
+* **El Problema:** En `src/nlp_pipeline.py`, la carga de `stopwords.words("spanish")` ocurre a nivel de módulo. Si el entorno no tiene los recursos descargados, la aplicación colapsará inmediatamente impidiendo que arranque la UI.
+* **La Solución:** Encapsular la inicialización en una función (ej. `iniciar_nltk()`) que maneje un bloque `try/except` e incluya `nltk.download(...)` antes de asignar las stopwords.
+</details>
 
-Las listas de señales y los patrones regex en predictor.py contienen redundancias y duplicados. Aunque no rompen el código, aumentan el costo computacional innecesariamente y ensucian la base de código. Se requiere una limpieza para mejorar el mantenimiento.
+<details>
+<summary><b>⚠️ Inconsistencia en la Gestión del Estado (Rutas de Archivos)</b></summary>
+<br>
 
-5. Plan de Acción Inmediato (Next Steps para el Practicante)
-Para considerar este ticket como cerrado y el proyecto como "Production-Ready", el practicante debe entregar un Pull Request con lo siguiente:
+* **El Problema:** Desincronización en el guardado. `src/app.py` usa `"historial_resenas.json"` (ruta relativa), mientras `src/predictor.py` usa `os.path.join(BASE_DIR, "historial_resenas.json")`. Esto creará historiales paralelos.
+* **La Solución:** Definir una **Única Fuente de Verdad (SSOT)**. Centralizar la constante `HISTORIAL_PATH` usando rutas absolutas con `BASE_DIR` y exportarla para todos los módulos.
+</details>
 
-Refactorizar la carga de dependencias NLTK dentro de funciones seguras (try/except).
+---
 
-Unificar la constante de la ruta del historial JSON en un archivo de configuración transversal.
+## 🛠️ 4. Oportunidades de Refactorización (Deuda Técnica)
 
-Añadir una capa de validación de esquema (columnas) al inicio del script preprocess.py.
+* **Ausencia de Programación Defensiva en ETL:** En `src/preprocess.py`, se asume ciegamente la existencia de las columnas `review_id`, `sentiment` e `is_defective`. 
+  * *Acción:* Implementar validaciones tempranas (`df.columns`) y lanzar excepciones descriptivas en lugar de fallar abruptamente con un `KeyError`.
+* **Validación de Dependencias NLTK:** Se exige `punkt_tab` en la documentación, un recurso no estándar que genera confusión. 
+  * *Acción:* Auditar y exigir estrictamente solo paquetes válidos (`punkt`, `stopwords`).
+* **Optimización de Expresiones Regulares:** Las listas de señales en `predictor.py` contienen redundancias y duplicados, aumentando el costo computacional innecesariamente.
 
-Limpiar las redundancias en las listas de señales/regex.
+---
 
-¿Te parece bien este nivel de profundidad para el análisis? Si deseas, puedo aplicar directamente las correcciones mencionadas en el plan de acción (el try/except de NLTK, la unificación de rutas y las validaciones del CSV) y generarte los fragmentos de código exactos para que se los pases al practicante como ejemplo, o podemos continuar con el siguiente resumen de calificación que tengas preparado.
+## 📝 5. Plan de Acción Inmediato (Next Steps)
+
+Para considerar este *ticket* como cerrado, por favor abre un **Pull Request** cumpliendo las siguientes tareas:
+
+- [ ] **Refactorizar NLTK:** Mover la carga de dependencias NLTK dentro de funciones seguras (`try/except`).
+- [ ] **Unificar Rutas:** Centralizar la constante de la ruta del historial JSON (`HISTORIAL_PATH`) en un archivo de configuración transversal.
+- [ ] **Validar Esquemas:** Añadir una capa de validación de columnas al inicio del script `preprocess.py`.
+- [ ] **Limpieza de Código:** Eliminar las redundancias en las listas de señales/regex.
+
+> *Nota: Por favor, etiqueta a tu líder técnico en el PR una vez que estas tareas estén completadas para proceder con la revisión de código.*
